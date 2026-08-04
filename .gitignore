@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual env
+venv/
+.venv/
+
+# Env vars / secrets
+.env
+
+# SQLite dev DB
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
