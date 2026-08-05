@@ -1,0 +1,288 @@
+:root {
+  --text: #2a2733;
+  --muted: #6b6375;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --danger: #c62828;
+  --success-bg: #e6f4ea;
+  --success-text: #1e6b34;
+  --error-bg: #fdecea;
+  --error-text: #b3261e;
+
+  font: 16px/150% system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin-top: 1.6rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 4rem;
+}
+
+/* --- Nav --- */
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-bg);
+}
+
+.navbar.admin {
+  background: #1d1a24;
+}
+
+.navbar.admin a {
+  color: #eee;
+}
+
+.navbar .brand {
+  font-weight: 700;
+  text-decoration: none;
+  margin-right: 1rem;
+}
+
+.navbar a {
+  text-decoration: none;
+  color: var(--text);
+}
+
+.navbar a.active {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font: inherit;
+  margin-left: auto;
+}
+
+/* --- Forms --- */
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.danger {
+  background: #fff;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+  flex-wrap: wrap;
+}
+
+.stack-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 420px;
+  margin: 0.8rem 0;
+}
+
+.stack-form label,
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+label.checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.3rem 0;
+}
+
+/* --- Login --- */
+.login-card {
+  max-width: 380px;
+  margin: 8vh auto;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+/* --- Tables --- */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8rem 0;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+td.actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+tr.flagged-row {
+  background: var(--error-bg);
+}
+
+/* --- Bits --- */
+.badge {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  font-size: 0.8rem;
+}
+
+.badge.locked {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.badge.status-open,
+.badge.status-looking_for_teammates {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badge.status-full,
+.badge.status-closed {
+  background: #eee;
+}
+
+.error-banner {
+  background: var(--error-bg);
+  color: var(--error-text);
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin: 0.8rem 0;
+}
+
+.success-banner {
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin: 0.8rem 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.countdown {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.tagline {
+  font-style: italic;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 2.5rem;
+}
+
+@media (max-width: 800px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timeline,
+.notifications {
+  list-style: none;
+  padding: 0;
+}
+
+.timeline li,
+.notifications li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-row {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+  flex-wrap: wrap;
+}
+
+.edit-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.admin-note {
+  background: var(--error-bg);
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+}

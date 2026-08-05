@@ -1,0 +1,54 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models import Profile, TeamMember
+from app.db.session import get_db
+from app.dependencies import get_current_user
+from app.schemas.common import error_responses
+from app.schemas.profile import ParticipantListItem
+
+router = APIRouter(tags=["Participants"])
+
+
+@router.get(
+    "/participants",
+    response_model=list[ParticipantListItem],
+    summary="Searchable participant list",
+    description=(
+        "All registered participants with their team status (`no_team` or `in_team`) "
+        "so leaders can find people to recruit. Filter with the `search` query "
+        "parameter (matches name or student/staff ID)."
+    ),
+    responses=error_responses(401, 403),
+)
+async def list_participants(
+    search: str | None = Query(default=None, description="Filter by name or ID"),
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ParticipantListItem]:
+    stmt = (
+        select(Profile)
+        .where(Profile.role == "participant")
+        .options(
+            selectinload(Profile.membership).selectinload(TeamMember.team)
+        )
+        .order_by(Profile.name)
+    )
+    if search:
+        pattern = f"%{search}%"
+        stmt = stmt.where(
+            Profile.name.ilike(pattern) | Profile.student_staff_id.ilike(pattern)
+        )
+    profiles = (await db.scalars(stmt)).all()
+    return [
+        ParticipantListItem(
+            id=p.id,
+            name=p.name,
+            student_staff_id=p.student_staff_id,
+            status="in_team" if p.membership else "no_team",
+            team_name=p.membership.team.name if p.membership else None,
+        )
+        for p in profiles
+    ]
