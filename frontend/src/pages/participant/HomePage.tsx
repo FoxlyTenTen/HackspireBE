@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  downloadMaterial,
   getEventInfo,
   getFinalists,
   getMaterials,
@@ -61,6 +62,22 @@ export default function HomePage() {
     [],
   )
   usePolling(pollNotifications, 25_000)
+
+  const handleDownload = async (material: MaterialRead) => {
+    try {
+      const blob = await downloadMaterial(material.id)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = material.file_name
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Download failed')
+    }
+  }
 
   if (error) return <ErrorBanner message={error} />
   if (!info) return <p>Loading…</p>
@@ -148,7 +165,13 @@ export default function HomePage() {
         <ul>
           {materials.map((material) => (
             <li key={material.id}>
-              <a href={material.file_url} target="_blank" rel="noreferrer">
+              <a
+                href={material.file_url}
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleDownload(material)
+                }}
+              >
                 {material.file_name}
               </a>{' '}
               <span className="muted">({formatDateTime(material.uploaded_at)})</span>

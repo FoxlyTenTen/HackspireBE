@@ -39,6 +39,11 @@ export const getEventInfo = () =>
 export const getMaterials = () =>
   client.get<MaterialRead[]>('/materials').then((r) => r.data)
 
+export const downloadMaterial = (materialId: string) =>
+  client
+    .get<Blob>(`/materials/${materialId}/download`, { responseType: 'blob' })
+    .then((r) => r.data)
+
 export const getFinalists = () =>
   client.get<FinalistRead[]>('/finalists').then((r) => r.data)
 
