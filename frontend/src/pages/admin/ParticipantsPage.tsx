@@ -57,6 +57,10 @@ export default function AdminParticipantsPage() {
         name: row.name ?? '',
         email: row.email ?? '',
         student_staff_id: row.student_staff_id ?? '',
+        reference_id: row.reference_id,
+        university_name: row.university_name,
+        technical_skills: row.technical_skills,
+        preferred_role: row.preferred_role,
       }))
     setError(null)
     setBusy(true)
@@ -98,8 +102,9 @@ export default function AdminParticipantsPage() {
 
       <h2>Excel import</h2>
       <p className="muted">
-        Step 1: choose an .xlsx file (columns: name, email, student_staff_id) to preview.
-        Nothing is written until you confirm. Initial password = student/staff ID.
+        Step 1: choose an .xlsx file (columns: name, email, student_staff_id, optional
+        reference_id, university_name, technical_skills, preferred_role) to preview. Nothing is
+        written until you confirm. Initial password = student/staff ID.
       </p>
       <input type="file" accept=".xlsx" onChange={(e) => void handleFile(e)} disabled={busy} />
 
@@ -115,7 +120,10 @@ export default function AdminParticipantsPage() {
                 <th>Row</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>ID</th>
+                <th>Reference ID</th>
+                <th>University</th>
+                <th>Technical Skills</th>
+                <th>Preferred Role</th>
                 <th>Status</th>
                 <th>Issues</th>
               </tr>
@@ -126,7 +134,10 @@ export default function AdminParticipantsPage() {
                   <td>{row.row_number}</td>
                   <td>{row.name ?? '—'}</td>
                   <td>{row.email ?? '—'}</td>
-                  <td>{row.student_staff_id ?? '—'}</td>
+                  <td>{row.reference_id ?? '—'}</td>
+                  <td>{row.university_name ?? '—'}</td>
+                  <td>{row.technical_skills ?? '—'}</td>
+                  <td>{row.preferred_role ?? '—'}</td>
                   <td>
                     <span className={`badge ${row.status === 'ok' ? 'status-open' : 'locked'}`}>
                       {row.status}
@@ -181,9 +192,12 @@ export default function AdminParticipantsPage() {
       <table>
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Username</th>
             <th>Email</th>
-            <th>ID</th>
+            <th>Reference ID</th>
+            <th>University</th>
+            <th>Technical Skills</th>
+            <th>Preferred Role</th>
             <th>First login pending</th>
             <th>Created</th>
             <th></th>
@@ -192,13 +206,20 @@ export default function AdminParticipantsPage() {
         <tbody>
           {data?.participants.map((participant) => (
             <tr key={participant.id}>
-              <td>{participant.name}</td>
+              <td>{participant.username ?? participant.name}</td>
               <td>{participant.email}</td>
-              <td>{participant.student_staff_id}</td>
+              <td>{participant.reference_id ?? '—'}</td>
+              <td>{participant.university_name ?? '—'}</td>
+              <td>{participant.technical_skills ?? '—'}</td>
+              <td>{participant.preferred_role ?? '—'}</td>
               <td>{participant.first_login ? 'yes' : 'no'}</td>
               <td>{formatDateTime(participant.created_at)}</td>
               <td>
-                <button onClick={() => void handleReset(participant.id, participant.name)}>
+                <button
+                  onClick={() =>
+                    void handleReset(participant.id, participant.username ?? participant.name)
+                  }
+                >
                   Reset password
                 </button>
               </td>

@@ -20,9 +20,11 @@ function NavBar() {
       <NavLink to="/">Home</NavLink>
       <NavLink to="/teams">Teams</NavLink>
       <NavLink to="/participants">Participants</NavLink>
+      <NavLink to="/announcements">Announcements</NavLink>
       <NavLink to="/notifications">Notifications</NavLink>
       {team && <NavLink to={`/teams/${team.id}`}>My Team</NavLink>}
       {team && <NavLink to={`/teams/${team.id}/submission`}>Submission</NavLink>}
+      <NavLink to="/profile">Profile</NavLink>
       <button className="link-button" onClick={handleLogout}>
         Log out
       </button>

@@ -12,6 +12,7 @@ from app.dependencies import require_admin
 from app.schemas.admin import AdminRejectRequest, AdminTeamRead, AdminTeamUpdate
 from app.schemas.common import error_responses
 from app.services import teams as team_service
+from app.services.audit import log_admin_action
 
 router = APIRouter(prefix="/admin/teams", tags=["Admin — Teams"])
 
@@ -20,6 +21,7 @@ def _to_admin_read(team: Team, has_submission: bool) -> AdminTeamRead:
     return AdminTeamRead(
         id=team.id,
         name=team.name,
+        reference_id=team.reference_id,
         leader_id=team.leader_id,
         leader_name=team.leader.name,
         member_count=len(team.members),
@@ -93,6 +95,7 @@ async def approve_team(
     team.approval_status = "approved"
     team.locked = True
     team.status = "closed"
+    log_admin_action(db, admin.id, "team_approved", target_table="teams", target_id=team.id)
     await db.commit()
     return await _admin_read(db, team_id)
 
@@ -115,6 +118,9 @@ async def reject_team(
     team.locked = False
     if body.note is not None:
         team.admin_note = body.note
+    log_admin_action(
+        db, admin.id, "team_rejected", target_table="teams", target_id=team.id, details=body.note
+    )
     await db.commit()
     return await _admin_read(db, team_id)
 
@@ -163,6 +169,7 @@ async def admin_update_team(
         if not body.locked and team.approval_status == "approved":
             team.approval_status = "pending"  # explicit revert of the approval
         team.locked = body.locked
+    log_admin_action(db, admin.id, "team_updated", target_table="teams", target_id=team.id)
     await db.commit()
     return await _admin_read(db, team_id)
 
@@ -180,5 +187,8 @@ async def force_delete_team(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     team = await team_service.get_team_or_404(db, team_id)
+    log_admin_action(
+        db, admin.id, "team_deleted", target_table="teams", target_id=team.id, details=team.name
+    )
     await team_service._delete_team_row(db, team)
     await db.commit()

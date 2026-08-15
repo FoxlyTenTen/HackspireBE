@@ -1,20 +1,27 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.db.models import Material, Profile
 from app.db.session import get_db
 from app.dependencies import require_admin
-from app.schemas.admin import EventSettingsRead
+from app.schemas.admin import (
+    EventSettingsRead,
+    TimelineImportConfirmRequest,
+    TimelineImportConfirmResponse,
+    TimelineImportPreviewResponse,
+)
 from app.schemas.common import error_responses
 from app.schemas.event import (
     AnnouncementCreate,
     AnnouncementRead,
+    AnnouncementUpdate,
     CountdownUpdate,
     FinalistRead,
     FinalistsPut,
+    MaterialCategory,
     MaterialRead,
     TimelineItemRead,
     TimelineUpdate,
@@ -22,6 +29,8 @@ from app.schemas.event import (
     WinnersPut,
 )
 from app.services import content as content_service
+from app.services import timeline_import as timeline_import_service
+from app.services.audit import log_admin_action
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/admin", tags=["Admin — Event Content"])
@@ -38,7 +47,7 @@ async def update_countdown(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> EventSettingsRead:
-    row = await content_service.set_countdown(db, body.countdown_at)
+    row = await content_service.set_countdown(db, admin, body.countdown_at)
     return EventSettingsRead(
         countdown_at=row.countdown_at,
         submission_deadline_at=row.submission_deadline_at,
@@ -58,7 +67,44 @@ async def update_timeline(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[TimelineItemRead]:
-    return await content_service.replace_timeline(db, body.items)
+    return await content_service.replace_timeline(db, admin, body.items)
+
+
+@router.post(
+    "/timeline/import",
+    response_model=TimelineImportPreviewResponse,
+    summary="Upload the timeline Excel file for preview",
+    description=(
+        "Step 1 of 2: parses the uploaded `.xlsx` and returns a per-row preview "
+        "WITHOUT writing anything."
+    ),
+    responses=error_responses(400, 401, 403, 422),
+)
+async def timeline_import_preview(
+    file: UploadFile = File(description="Excel .xlsx file of timeline sessions"),
+    admin: Profile = Depends(require_admin),
+) -> TimelineImportPreviewResponse:
+    content = await file.read()
+    return timeline_import_service.preview(content)
+
+
+@router.post(
+    "/timeline/import/confirm",
+    response_model=TimelineImportConfirmResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirm the timeline import and replace the timeline",
+    description=(
+        "Step 2 of 2: send back the `ok` rows from the preview. Replaces the "
+        "entire timeline, same semantics as PATCH /admin/event/timeline."
+    ),
+    responses=error_responses(400, 401, 403, 422),
+)
+async def timeline_import_confirm(
+    body: TimelineImportConfirmRequest,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> TimelineImportConfirmResponse:
+    return await timeline_import_service.confirm(db, admin, body.rows)
 
 
 @router.put(
@@ -76,7 +122,7 @@ async def put_finalists(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[FinalistRead]:
-    return await content_service.put_finalists(db, body)
+    return await content_service.put_finalists(db, admin, body)
 
 
 @router.put(
@@ -94,7 +140,7 @@ async def put_winners(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[WinnerRead]:
-    return await content_service.put_winners(db, body)
+    return await content_service.put_winners(db, admin, body)
 
 
 @router.post(
@@ -110,6 +156,7 @@ async def put_winners(
 )
 async def upload_material(
     file: UploadFile = File(description="The file to publish to participants"),
+    category: MaterialCategory = Form(default="general"),
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> MaterialRead:
@@ -120,9 +167,14 @@ async def upload_material(
     material = Material(
         file_name=file.filename or "material",
         file_url=file_url,
+        category=category,
         uploaded_by=admin.id,
     )
     db.add(material)
+    await db.flush()
+    log_admin_action(
+        db, admin.id, "material_uploaded", target_table="materials", target_id=material.id
+    )
     await db.commit()
     return material
 
@@ -142,6 +194,9 @@ async def delete_material(
     if material is None:
         raise ApiError(404, "Material not found")
     await get_storage().delete(material.file_url)
+    log_admin_action(
+        db, admin.id, "material_deleted", target_table="materials", target_id=material.id
+    )
     await db.delete(material)
     await db.commit()
 
@@ -160,3 +215,32 @@ async def post_announcement(
     db: AsyncSession = Depends(get_db),
 ) -> AnnouncementRead:
     return await content_service.create_announcement(db, admin, body)
+
+
+@router.patch(
+    "/announcements/{announcement_id}",
+    response_model=AnnouncementRead,
+    summary="Edit a posted announcement",
+    responses=error_responses(401, 403, 404, 422),
+)
+async def patch_announcement(
+    announcement_id: uuid.UUID,
+    body: AnnouncementUpdate,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementRead:
+    return await content_service.update_announcement(db, admin, announcement_id, body)
+
+
+@router.delete(
+    "/announcements/{announcement_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an announcement",
+    responses=error_responses(401, 403, 404),
+)
+async def delete_announcement(
+    announcement_id: uuid.UUID,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await content_service.delete_announcement(db, admin, announcement_id)

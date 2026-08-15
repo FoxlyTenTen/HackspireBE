@@ -9,11 +9,13 @@ import AdminParticipantsPage from './pages/admin/ParticipantsPage'
 import AdminSubmissionsPage from './pages/admin/SubmissionsPage'
 import AdminTeamsPage from './pages/admin/TeamsPage'
 import EventContentPage from './pages/admin/EventContentPage'
+import AnnouncementsPage from './pages/participant/AnnouncementsPage'
 import ChangePasswordPage from './pages/participant/ChangePasswordPage'
 import HomePage from './pages/participant/HomePage'
 import LoginPage from './pages/participant/LoginPage'
 import NotificationsPage from './pages/participant/NotificationsPage'
 import ParticipantsPage from './pages/participant/ParticipantsPage'
+import ProfilePage from './pages/participant/ProfilePage'
 import SubmissionPage from './pages/participant/SubmissionPage'
 import TeamsPage from './pages/participant/TeamsPage'
 import YourTeamPage from './pages/participant/YourTeamPage'
@@ -37,6 +39,8 @@ export default function App() {
               <Route path="/teams/:teamId" element={<YourTeamPage />} />
               <Route path="/teams/:teamId/submission" element={<SubmissionPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/announcements" element={<AnnouncementsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
 

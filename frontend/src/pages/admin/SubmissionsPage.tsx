@@ -76,7 +76,8 @@ export default function AdminSubmissionsPage() {
         <thead>
           <tr>
             <th>Team</th>
-            <th>Link</th>
+            <th>GitHub</th>
+            <th>Drive</th>
             <th>Submitted</th>
             <th>Updated</th>
           </tr>
@@ -86,9 +87,22 @@ export default function AdminSubmissionsPage() {
             <tr key={row.team_id}>
               <td>{row.team_name}</td>
               <td>
-                <a href={row.url} target="_blank" rel="noreferrer">
-                  {row.url}
-                </a>
+                {row.github_url ? (
+                  <a href={row.github_url} target="_blank" rel="noreferrer">
+                    {row.github_url}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </td>
+              <td>
+                {row.gdrive_url ? (
+                  <a href={row.gdrive_url} target="_blank" rel="noreferrer">
+                    {row.gdrive_url}
+                  </a>
+                ) : (
+                  '—'
+                )}
               </td>
               <td>{formatDateTime(row.submitted_at)}</td>
               <td>{formatDateTime(row.updated_at)}</td>

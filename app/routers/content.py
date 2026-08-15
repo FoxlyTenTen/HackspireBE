@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.dependencies import get_current_user
 from app.schemas.common import error_responses
 from app.schemas.event import (
+    AnnouncementRead,
     EventInfoResponse,
     FinalistRead,
     MaterialRead,
@@ -95,3 +96,30 @@ async def get_winners(
     user: Profile = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> list[WinnerRead]:
     return await content_service.list_winners(db, published_only=True)
+
+
+@router.get(
+    "/announcements",
+    response_model=list[AnnouncementRead],
+    summary="List announcements",
+    description="All posted announcements, newest first.",
+    responses=error_responses(401, 403),
+)
+async def get_announcements(
+    user: Profile = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> list[AnnouncementRead]:
+    return await content_service.list_announcements(db)
+
+
+@router.get(
+    "/announcements/{announcement_id}",
+    response_model=AnnouncementRead,
+    summary="Announcement detail",
+    responses=error_responses(401, 403, 404),
+)
+async def get_announcement(
+    announcement_id: uuid.UUID,
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementRead:
+    return await content_service.get_announcement_or_404(db, announcement_id)

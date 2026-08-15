@@ -12,9 +12,21 @@ GITHUB_RE = re.compile(r"^https://(www\.)?github\.com/[\w.-]+/[\w.-]+(/.*)?$")
 DRIVE_RE = re.compile(r"^https://(drive|docs)\.google\.com/[^\s]+$")
 
 
-def validate_url(url: str) -> None:
-    if not (GITHUB_RE.match(url) or DRIVE_RE.match(url)):
-        raise ApiError(400, "URL must be a well-formed GitHub or Google Drive link")
+def validate_github_url(url: str) -> None:
+    if not GITHUB_RE.match(url):
+        raise ApiError(400, "github_url must be a well-formed GitHub link")
+
+
+def validate_gdrive_url(url: str) -> None:
+    if not DRIVE_RE.match(url):
+        raise ApiError(400, "gdrive_url must be a well-formed Google Drive link")
+
+
+def validate_links(github_url: str | None, gdrive_url: str | None) -> None:
+    if github_url:
+        validate_github_url(github_url)
+    if gdrive_url:
+        validate_gdrive_url(gdrive_url)
 
 
 async def get_event_settings(db: AsyncSession) -> EventSettings:
@@ -47,23 +59,42 @@ async def get_submission(db: AsyncSession, team_id: uuid.UUID) -> Submission:
     return submission
 
 
-async def create_submission(db: AsyncSession, team_id: uuid.UUID, url: str) -> Submission:
-    validate_url(url)
+async def create_submission(
+    db: AsyncSession,
+    team_id: uuid.UUID,
+    user_id: uuid.UUID,
+    github_url: str | None,
+    gdrive_url: str | None,
+) -> Submission:
+    validate_links(github_url, gdrive_url)
     await ensure_deadline_open(db)
     existing = await db.scalar(select(Submission).where(Submission.team_id == team_id))
     if existing is not None:
         raise ApiError(409, "This team already has a submission — use PATCH to edit it")
-    submission = Submission(team_id=team_id, url=url)
+    submission = Submission(
+        team_id=team_id,
+        github_url=github_url,
+        gdrive_url=gdrive_url,
+        submitted_by=user_id,
+    )
     db.add(submission)
     await db.commit()
     return submission
 
 
-async def update_submission(db: AsyncSession, team_id: uuid.UUID, url: str) -> Submission:
-    validate_url(url)
+async def update_submission(
+    db: AsyncSession,
+    team_id: uuid.UUID,
+    user_id: uuid.UUID,
+    github_url: str | None,
+    gdrive_url: str | None,
+) -> Submission:
+    validate_links(github_url, gdrive_url)
     await ensure_deadline_open(db)
     submission = await get_submission(db, team_id)
-    submission.url = url
+    submission.github_url = github_url
+    submission.gdrive_url = gdrive_url
+    submission.submitted_by = user_id
     submission.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return submission

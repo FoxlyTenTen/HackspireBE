@@ -1,0 +1,8 @@
+name,email,student_staff_id,reference_id,university_name,technical_skills,preferred_role
+Aisyah Rahman,aisyah@student.edu.my,A100001,P0001,Universiti Malaya,"React, Node.js",Frontend
+Ben Tan,ben@student.edu.my,A100002,P0002,Universiti Sains Malaysia,Python,Backend
+Chen Wei,chen@student.edu.my,A100003,P0003,Universiti Teknologi Malaysia,"Figma, UI Design",Design
+Devi Kumar,devi@student.edu.my,A100004,P0004,Universiti Putra Malaysia,"Public Speaking, Pitching",Pitching
+Emir Hakim,emir@student.edu.my,A100005,P0005,Universiti Kebangsaan Malaysia,"Flutter, Dart",Mobile
+Farah Lim,,A100006,P0006,Universiti Malaya,,
+,farah@student.edu.my,,P0007,Universiti Malaya,,

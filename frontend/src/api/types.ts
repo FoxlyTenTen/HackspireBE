@@ -1,6 +1,8 @@
 export type Role = 'participant' | 'admin'
 export type TeamStatus = 'open' | 'looking_for_teammates' | 'closed' | 'full'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+export type TimelineStatus = 'TBD' | 'Proposed' | 'Confirmed' | 'Declined'
+export type MaterialCategory = 'general' | 'submission_template'
 
 export interface LoginResponse {
   jwt: string
@@ -11,7 +13,10 @@ export interface LoginResponse {
 export interface ParticipantListItem {
   id: string
   name: string
-  student_staff_id: string
+  username: string | null
+  reference_id: string | null
+  technical_skills: string | null
+  preferred_role: string | null
   status: 'no_team' | 'in_team'
   team_name: string | null
 }
@@ -19,6 +24,7 @@ export interface ParticipantListItem {
 export interface TeamListItem {
   id: string
   name: string
+  reference_id: string | null
   member_count: number
   capacity: number
   status: TeamStatus
@@ -35,6 +41,7 @@ export interface TeamMemberRead {
 export interface TeamRead {
   id: string
   name: string
+  reference_id: string | null
   leader_id: string
   capacity: number
   status: TeamStatus
@@ -69,24 +76,70 @@ export interface NotificationRead {
 export interface SubmissionRead {
   id: string
   team_id: string
-  url: string
+  github_url: string | null
+  gdrive_url: string | null
+  submitted_by: string | null
   submitted_at: string
   updated_at: string
 }
 
 export interface TimelineItem {
   id: string
-  time_label: string
-  title: string
-  description: string | null
+  bootcamp_name: string
+  date_label: string
+  time_session: string
+  session_type: string
+  speaker_name: string | null
+  speaker_bio: string | null
+  organization: string | null
+  session_description: string | null
+  speaker_photo_url: string | null
+  status: TimelineStatus
+  remarks: string | null
   order_index: number
 }
 
 export interface TimelineItemWrite {
-  time_label: string
-  title: string
-  description?: string | null
+  bootcamp_name: string
+  date_label: string
+  time_session: string
+  session_type: string
+  speaker_name?: string | null
+  speaker_bio?: string | null
+  organization?: string | null
+  session_description?: string | null
+  speaker_photo_url?: string | null
+  status: TimelineStatus
+  remarks?: string | null
   order_index: number
+}
+
+export interface TimelineImportRow {
+  row_number: number
+  bootcamp_name: string | null
+  date_label: string | null
+  time_session: string | null
+  session_type: string | null
+  speaker_name: string | null
+  speaker_bio: string | null
+  organization: string | null
+  session_description: string | null
+  speaker_photo_url: string | null
+  status: string | null
+  remarks: string | null
+  order_index: number
+  row_status: 'ok' | 'flagged'
+  issues: string[]
+}
+
+export interface TimelineImportPreviewResponse {
+  rows: TimelineImportRow[]
+  ok_count: number
+  flagged_count: number
+}
+
+export interface TimelineImportConfirmResponse {
+  created: number
 }
 
 export interface EventInfo {
@@ -105,6 +158,7 @@ export interface MaterialRead {
   id: string
   file_name: string
   file_url: string
+  category: MaterialCategory
   uploaded_at: string
 }
 
@@ -129,8 +183,10 @@ export interface AnnouncementRead {
   id: string
   title: string
   body: string
+  image_url: string | null
   posted_by: string
   posted_at: string
+  updated_at: string | null
 }
 
 export interface ImportRow {
@@ -138,6 +194,10 @@ export interface ImportRow {
   name: string | null
   email: string | null
   student_staff_id: string | null
+  reference_id: string | null
+  university_name: string | null
+  technical_skills: string | null
+  preferred_role: string | null
   status: 'ok' | 'flagged'
   issues: string[]
 }
@@ -161,7 +221,20 @@ export interface ProfileRead {
   student_staff_id: string
   role: Role
   first_login: boolean
+  username: string | null
+  email_verified: boolean
+  reference_id: string | null
+  university_name: string | null
+  technical_skills: string | null
+  preferred_role: string | null
   created_at: string
+}
+
+export interface ProfileUpdate {
+  username?: string | null
+  university_name?: string | null
+  technical_skills?: string | null
+  preferred_role?: string | null
 }
 
 export interface AdminParticipantsResponse {
@@ -179,6 +252,7 @@ export interface ResetPasswordResponse {
 export interface AdminTeamRead {
   id: string
   name: string
+  reference_id: string | null
   leader_id: string
   leader_name: string
   member_count: number
@@ -202,7 +276,8 @@ export interface AdminTeamUpdate {
 export interface AdminSubmissionRow {
   team_id: string
   team_name: string
-  url: string
+  github_url: string | null
+  gdrive_url: string | null
   submitted_at: string
   updated_at: string
 }

@@ -1,5 +1,10 @@
 import { useCallback, useState } from 'react'
-import { getJoinRequests, getNotifications, respondToJoinRequest } from '../../api/endpoints'
+import {
+  getJoinRequests,
+  getNotifications,
+  markNotificationRead,
+  respondToJoinRequest,
+} from '../../api/endpoints'
 import type { JoinRequestRead, NotificationRead } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
 import { useMyTeam } from '../../context/MyTeamContext'
@@ -35,6 +40,20 @@ export default function NotificationsPage() {
       setError((err as Error).message)
     }
   }
+
+  const handleMarkRead = async (notificationId: string) => {
+    setNotifications((current) =>
+      current.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+    )
+    try {
+      await markNotificationRead(notificationId)
+    } catch (err) {
+      setError((err as Error).message)
+      await poll()
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.read).length
 
   return (
     <div>
@@ -73,13 +92,21 @@ export default function NotificationsPage() {
         </>
       )}
 
-      <h2>All notifications</h2>
+      <h2>All notifications {unreadCount > 0 && <span className="badge">{unreadCount} unread</span>}</h2>
       {notifications.length === 0 && <p>Nothing yet.</p>}
       <ul className="notifications">
         {notifications.map((notification) => (
-          <li key={notification.id}>
+          <li key={notification.id} className={notification.read ? '' : 'unread'}>
             <span className="badge">{notification.type}</span> {notification.message}
             <div className="muted">{formatDateTime(notification.created_at)}</div>
+            {!notification.read && (
+              <button
+                className="link-button"
+                onClick={() => void handleMarkRead(notification.id)}
+              >
+                Mark as read
+              </button>
+            )}
           </li>
         ))}
       </ul>

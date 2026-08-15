@@ -74,6 +74,7 @@ async def list_teams(db: AsyncSession, search: str | None) -> list[TeamListItem]
         TeamListItem(
             id=t.id,
             name=t.name,
+            reference_id=t.reference_id,
             member_count=len(t.members),
             capacity=t.capacity,
             status=t.status,
@@ -103,6 +104,7 @@ async def team_detail(db: AsyncSession, team_id: uuid.UUID) -> TeamRead:
     return TeamRead(
         id=team.id,
         name=team.name,
+        reference_id=team.reference_id,
         leader_id=team.leader_id,
         capacity=team.capacity,
         status=team.status,
@@ -126,6 +128,8 @@ async def create_team(db: AsyncSession, user: Profile, data: TeamCreate) -> Team
     await db.flush()
     db.add(TeamMember(team_id=team.id, participant_id=user.id))
     await db.commit()
+    # reference_id is set by a DB trigger on INSERT — reload to pick it up
+    await db.refresh(team)
     return team
 
 

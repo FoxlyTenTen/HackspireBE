@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,3 +28,17 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
 ) -> list[NotificationRead]:
     return await notification_service.list_for_user(db, user.id)
+
+
+@router.patch(
+    "/{notification_id}/read",
+    response_model=NotificationRead,
+    summary="Mark a notification as read",
+    responses=error_responses(401, 403, 404),
+)
+async def mark_notification_read(
+    notification_id: uuid.UUID,
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationRead:
+    return await notification_service.mark_read(db, user.id, notification_id)

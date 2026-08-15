@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   downloadMaterial,
+  getAnnouncements,
   getEventInfo,
   getFinalists,
   getMaterials,
@@ -9,6 +10,7 @@ import {
   getWinners,
 } from '../../api/endpoints'
 import type {
+  AnnouncementRead,
   EventInfo,
   FinalistRead,
   MaterialRead,
@@ -44,15 +46,17 @@ export default function HomePage() {
   const [finalists, setFinalists] = useState<FinalistRead[]>([])
   const [winners, setWinners] = useState<WinnerRead[]>([])
   const [notifications, setNotifications] = useState<NotificationRead[]>([])
+  const [announcements, setAnnouncements] = useState<AnnouncementRead[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getEventInfo(), getMaterials(), getFinalists(), getWinners()])
-      .then(([eventInfo, materialList, finalistList, winnerList]) => {
+    Promise.all([getEventInfo(), getMaterials(), getFinalists(), getWinners(), getAnnouncements()])
+      .then(([eventInfo, materialList, finalistList, winnerList, announcementList]) => {
         setInfo(eventInfo)
-        setMaterials(materialList)
+        setMaterials(materialList.filter((m) => m.category === 'general'))
         setFinalists(finalistList)
         setWinners(winnerList)
+        setAnnouncements(announcementList)
       })
       .catch((err: Error) => setError(err.message))
   }, [])
@@ -98,12 +102,24 @@ export default function HomePage() {
         )}
 
         <h2>Timeline</h2>
-        {info.timeline.length === 0 && <p>Agenda coming soon.</p>}
+        {info.timeline.filter((item) => item.status !== 'Declined').length === 0 && (
+          <p>Agenda coming soon.</p>
+        )}
         <ul className="timeline">
-          {info.timeline.map((item) => (
+          {info.timeline
+            .filter((item) => item.status !== 'Declined')
+            .map((item) => (
             <li key={item.id}>
-              <strong>{item.time_label}</strong> — {item.title}
-              {item.description && <div className="muted">{item.description}</div>}
+              <strong>{item.bootcamp_name}</strong> — {item.date_label}
+              <div>{item.time_session}</div>
+              <span className="badge">{item.session_type}</span>
+              {item.speaker_name && (
+                <div className="muted">
+                  {item.speaker_name}
+                  {item.organization && <> · {item.organization}</>}
+                </div>
+              )}
+              {item.session_description && <div className="muted">{item.session_description}</div>}
             </li>
           ))}
         </ul>
@@ -175,6 +191,20 @@ export default function HomePage() {
                 {material.file_name}
               </a>{' '}
               <span className="muted">({formatDateTime(material.uploaded_at)})</span>
+            </li>
+          ))}
+        </ul>
+
+        <h2>
+          Announcements <Link to="/announcements">(all)</Link>
+        </h2>
+        {announcements.length === 0 && <p>Nothing yet.</p>}
+        <ul className="announcements">
+          {announcements.slice(0, 3).map((a) => (
+            <li key={a.id} className="announcement-card">
+              <strong>{a.title}</strong>
+              <p>{a.body}</p>
+              <div className="muted">{formatDateTime(a.posted_at)}</div>
             </li>
           ))}
         </ul>

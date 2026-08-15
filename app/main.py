@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.db.base import Base
-from app.db.models import EventSettings  # noqa: F401 — ensure models are registered
+from app.db.models import AuditLog, EventSettings  # noqa: F401 — ensure models are registered
 from app.db.session import async_session_factory, engine
 from app.routers import (
     admin_content,
@@ -22,6 +22,7 @@ from app.routers import (
     join_requests,
     notifications,
     participants,
+    profile,
     submissions,
     teams,
 )
@@ -103,6 +104,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(content.router, prefix=API_PREFIX)
 app.include_router(participants.router, prefix=API_PREFIX)
+app.include_router(profile.router, prefix=API_PREFIX)
 app.include_router(teams.router, prefix=API_PREFIX)
 app.include_router(join_requests.router, prefix=API_PREFIX)
 app.include_router(notifications.router, prefix=API_PREFIX)

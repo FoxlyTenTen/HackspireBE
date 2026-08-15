@@ -86,6 +86,7 @@ export default function TeamsPage() {
       <table>
         <thead>
           <tr>
+            <th>Ref</th>
             <th>Name</th>
             <th>Members</th>
             <th>Status</th>
@@ -95,6 +96,7 @@ export default function TeamsPage() {
         <tbody>
           {teams.map((team) => (
             <tr key={team.id}>
+              <td>{team.reference_id ?? '—'}</td>
               <td>
                 <Link to={`/teams/${team.id}`}>{team.name}</Link>
               </td>

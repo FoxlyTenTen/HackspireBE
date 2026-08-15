@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.event import TimelineStatus
 from app.schemas.profile import ProfileRead
 from app.schemas.team import ApprovalStatus, TeamStatus
 
@@ -13,6 +14,10 @@ class ImportRow(BaseModel):
     name: str | None
     email: str | None
     student_staff_id: str | None
+    reference_id: str | None = None
+    university_name: str | None = None
+    technical_skills: str | None = None
+    preferred_role: str | None = None
     status: Literal["ok", "flagged"]
     issues: list[str] = Field(
         default_factory=list,
@@ -35,6 +40,7 @@ class ImportPreviewResponse(BaseModel):
                             "name": "Aisyah Rahman",
                             "email": "aisyah@student.edu.my",
                             "student_staff_id": "A123456",
+                            "reference_id": "P0001",
                             "status": "ok",
                             "issues": [],
                         },
@@ -43,6 +49,7 @@ class ImportPreviewResponse(BaseModel):
                             "name": "Ben Tan",
                             "email": "aisyah@student.edu.my",
                             "student_staff_id": "A123457",
+                            "reference_id": "P0002",
                             "status": "flagged",
                             "issues": ["duplicate email within file"],
                         },
@@ -59,6 +66,10 @@ class ImportConfirmRowIn(BaseModel):
     name: str = Field(examples=["Aisyah Rahman"])
     email: str = Field(examples=["aisyah@student.edu.my"])
     student_staff_id: str = Field(examples=["A123456"])
+    reference_id: str | None = Field(default=None, examples=["P0001"])
+    university_name: str | None = Field(default=None, examples=["Universiti Malaya"])
+    technical_skills: str | None = Field(default=None, examples=["React, Python"])
+    preferred_role: str | None = Field(default=None, examples=["Frontend"])
 
 
 class ImportConfirmRequest(BaseModel):
@@ -92,6 +103,7 @@ class ResetPasswordResponse(BaseModel):
 class AdminTeamRead(BaseModel):
     id: uuid.UUID
     name: str
+    reference_id: str | None
     leader_id: uuid.UUID
     leader_name: str
     member_count: int
@@ -132,7 +144,8 @@ class AdminRejectRequest(BaseModel):
 class AdminSubmissionRow(BaseModel):
     team_id: uuid.UUID
     team_name: str
-    url: str
+    github_url: str | None
+    gdrive_url: str | None
     submitted_at: datetime
     updated_at: datetime
 
@@ -147,3 +160,65 @@ class EventSettingsRead(BaseModel):
     countdown_at: datetime | None
     submission_deadline_at: datetime | None
     updated_at: datetime
+
+
+class AuditLogRead(BaseModel):
+    id: uuid.UUID
+    admin_id: uuid.UUID
+    action: str
+    target_table: str | None
+    target_id: uuid.UUID | None
+    details: str | None
+    created_at: datetime
+
+
+class TimelineImportRow(BaseModel):
+    row_number: int = Field(description="1-based row number in the uploaded sheet")
+    bootcamp_name: str | None
+    date_label: str | None
+    time_session: str | None
+    session_type: str | None
+    speaker_name: str | None
+    speaker_bio: str | None
+    organization: str | None
+    session_description: str | None
+    speaker_photo_url: str | None
+    status: str | None
+    remarks: str | None
+    order_index: int
+    row_status: Literal["ok", "flagged"]
+    issues: list[str] = Field(default_factory=list)
+
+
+class TimelineImportPreviewResponse(BaseModel):
+    rows: list[TimelineImportRow]
+    ok_count: int
+    flagged_count: int
+
+
+class TimelineImportConfirmRowIn(BaseModel):
+    bootcamp_name: str
+    date_label: str
+    time_session: str
+    session_type: str
+    speaker_name: str | None = None
+    speaker_bio: str | None = None
+    organization: str | None = None
+    session_description: str | None = None
+    speaker_photo_url: str | None = None
+    status: TimelineStatus = "TBD"
+    remarks: str | None = None
+    order_index: int = 0
+
+
+class TimelineImportConfirmRequest(BaseModel):
+    rows: list[TimelineImportConfirmRowIn] = Field(
+        description=(
+            "Rows to write, as returned by the import preview (ok rows). Replaces "
+            "the entire timeline, same as PATCH /admin/event/timeline."
+        )
+    )
+
+
+class TimelineImportConfirmResponse(BaseModel):
+    created: int

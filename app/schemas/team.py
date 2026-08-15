@@ -35,6 +35,7 @@ class TeamMemberRead(BaseModel):
 class TeamListItem(BaseModel):
     id: uuid.UUID
     name: str
+    reference_id: str | None
     member_count: int
     capacity: int
     status: TeamStatus
@@ -45,6 +46,7 @@ class TeamRead(BaseModel):
 
     id: uuid.UUID
     name: str
+    reference_id: str | None
     leader_id: uuid.UUID
     capacity: int
     status: TeamStatus

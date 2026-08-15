@@ -94,6 +94,7 @@ export default function AdminTeamsPage() {
       <table>
         <thead>
           <tr>
+            <th>Ref</th>
             <th>Name</th>
             <th>Leader</th>
             <th>Members</th>
@@ -106,6 +107,7 @@ export default function AdminTeamsPage() {
         <tbody>
           {teams.map((team) => (
             <tr key={team.id}>
+              <td>{team.reference_id ?? '—'}</td>
               <td>
                 {team.name} {team.locked && '🔒'}
                 {team.admin_note && <div className="muted">note: {team.admin_note}</div>}

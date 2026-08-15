@@ -12,14 +12,19 @@ import type {
   ImportPreviewResponse,
   JoinRequestRead,
   LoginResponse,
+  MaterialCategory,
   MaterialRead,
   NotificationRead,
   ParticipantListItem,
+  ProfileRead,
+  ProfileUpdate,
   ResetPasswordResponse,
   SubmissionRead,
   TeamListItem,
   TeamRead,
   TeamStatus,
+  TimelineImportConfirmResponse,
+  TimelineImportPreviewResponse,
   TimelineItem,
   TimelineItemWrite,
   WinnerRead,
@@ -31,6 +36,12 @@ export const login = (username: string, password: string) =>
 
 export const changePassword = (new_password: string) =>
   client.post('/auth/change-password', { new_password }).then((r) => r.data)
+
+// ---------- Profile ----------
+export const getProfile = () => client.get<ProfileRead>('/profile').then((r) => r.data)
+
+export const updateProfile = (body: ProfileUpdate) =>
+  client.patch<ProfileRead>('/profile', body).then((r) => r.data)
 
 // ---------- Home / Content ----------
 export const getEventInfo = () =>
@@ -49,6 +60,12 @@ export const getFinalists = () =>
 
 export const getWinners = () =>
   client.get<WinnerRead[]>('/winners').then((r) => r.data)
+
+export const getAnnouncements = () =>
+  client.get<AnnouncementRead[]>('/announcements').then((r) => r.data)
+
+export const getAnnouncement = (announcementId: string) =>
+  client.get<AnnouncementRead>(`/announcements/${announcementId}`).then((r) => r.data)
 
 // ---------- Participants ----------
 export const getParticipants = (search?: string) =>
@@ -101,15 +118,24 @@ export const respondToJoinRequest = (requestId: string, decision: 'approve' | 'r
 export const getNotifications = () =>
   client.get<NotificationRead[]>('/notifications').then((r) => r.data)
 
+export const markNotificationRead = (notificationId: string) =>
+  client
+    .patch<NotificationRead>(`/notifications/${notificationId}/read`)
+    .then((r) => r.data)
+
 // ---------- Submission ----------
 export const getSubmission = (teamId: string) =>
   client.get<SubmissionRead>(`/teams/${teamId}/submission`).then((r) => r.data)
 
-export const createSubmission = (teamId: string, url: string) =>
-  client.post<SubmissionRead>(`/teams/${teamId}/submission`, { url }).then((r) => r.data)
+export const createSubmission = (
+  teamId: string,
+  body: { github_url?: string | null; gdrive_url?: string | null },
+) => client.post<SubmissionRead>(`/teams/${teamId}/submission`, body).then((r) => r.data)
 
-export const updateSubmission = (teamId: string, url: string) =>
-  client.patch<SubmissionRead>(`/teams/${teamId}/submission`, { url }).then((r) => r.data)
+export const updateSubmission = (
+  teamId: string,
+  body: { github_url?: string | null; gdrive_url?: string | null },
+) => client.patch<SubmissionRead>(`/teams/${teamId}/submission`, body).then((r) => r.data)
 
 // ---------- Admin — Participants ----------
 export const adminImportPreview = (file: File) => {
@@ -121,7 +147,15 @@ export const adminImportPreview = (file: File) => {
 }
 
 export const adminImportConfirm = (
-  rows: { name: string; email: string; student_staff_id: string }[],
+  rows: {
+    name: string
+    email: string
+    student_staff_id: string
+    reference_id?: string | null
+    university_name?: string | null
+    technical_skills?: string | null
+    preferred_role?: string | null
+  }[],
 ) =>
   client
     .post<ImportConfirmResponse>('/admin/participants/import/confirm', { rows })
@@ -167,6 +201,19 @@ export const adminSetCountdown = (countdown_at: string) =>
 export const adminSetTimeline = (items: TimelineItemWrite[]) =>
   client.patch<TimelineItem[]>('/admin/event/timeline', { items }).then((r) => r.data)
 
+export const adminTimelineImportPreview = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return client
+    .post<TimelineImportPreviewResponse>('/admin/timeline/import', form)
+    .then((r) => r.data)
+}
+
+export const adminTimelineImportConfirm = (rows: TimelineItemWrite[]) =>
+  client
+    .post<TimelineImportConfirmResponse>('/admin/timeline/import/confirm', { rows })
+    .then((r) => r.data)
+
 export const adminPutFinalists = (team_ids: string[], published: boolean) =>
   client.put<FinalistRead[]>('/admin/finalists', { team_ids, published }).then((r) => r.data)
 
@@ -175,17 +222,31 @@ export const adminPutWinners = (
   published: boolean,
 ) => client.put<WinnerRead[]>('/admin/winners', { winners, published }).then((r) => r.data)
 
-export const adminUploadMaterial = (file: File) => {
+export const adminUploadMaterial = (file: File, category: MaterialCategory = 'general') => {
   const form = new FormData()
   form.append('file', file)
+  form.append('category', category)
   return client.post<MaterialRead>('/admin/materials', form).then((r) => r.data)
 }
 
 export const adminDeleteMaterial = (materialId: string) =>
   client.delete(`/admin/materials/${materialId}`).then((r) => r.data)
 
-export const adminPostAnnouncement = (title: string, body: string) =>
-  client.post<AnnouncementRead>('/admin/announcements', { title, body }).then((r) => r.data)
+export const adminPostAnnouncement = (title: string, body: string, image_url?: string | null) =>
+  client
+    .post<AnnouncementRead>('/admin/announcements', { title, body, image_url })
+    .then((r) => r.data)
+
+export const adminUpdateAnnouncement = (
+  announcementId: string,
+  body: { title?: string; body?: string; image_url?: string | null },
+) =>
+  client
+    .patch<AnnouncementRead>(`/admin/announcements/${announcementId}`, body)
+    .then((r) => r.data)
+
+export const adminDeleteAnnouncement = (announcementId: string) =>
+  client.delete(`/admin/announcements/${announcementId}`).then((r) => r.data)
 
 // ---------- Admin — Submissions ----------
 export const adminGetSubmissions = () =>

@@ -23,6 +23,12 @@ class Profile(Base):
     role: Mapped[str] = mapped_column(Text, default="participant")  # participant | admin
     first_login: Mapped[bool] = mapped_column(Boolean, default=True)
     hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True)
+    username: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    reference_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
+    university_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technical_skills: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_role: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     membership: Mapped["TeamMember | None"] = relationship(
@@ -35,6 +41,9 @@ class Team(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, unique=True)
+    # DB-generated on INSERT via a Postgres sequence + trigger, format GR_01, GR_02...
+    # Never set this from app code — call db.refresh(team) after insert to load it.
+    reference_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     leader_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("profiles.id"))
     capacity: Mapped[int] = mapped_column(Integer, default=5)
     # open | looking_for_teammates | closed | full
@@ -102,7 +111,11 @@ class Submission(Base):
     team_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("teams.id", ondelete="CASCADE"), unique=True
     )
-    url: Mapped[str] = mapped_column(Text)  # validated GitHub / Google Drive link
+    github_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gdrive_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("profiles.id"), nullable=True
+    )
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -132,9 +145,18 @@ class TimelineItem(Base):
     __tablename__ = "timeline_items"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    time_label: Mapped[str] = mapped_column(Text)
-    title: Mapped[str] = mapped_column(Text)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bootcamp_name: Mapped[str] = mapped_column(Text)
+    date_label: Mapped[str] = mapped_column(Text)
+    time_session: Mapped[str] = mapped_column(Text)
+    session_type: Mapped[str] = mapped_column(Text)
+    speaker_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    speaker_bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    speaker_photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # TBD | Proposed | Confirmed | Declined — admin-facing
+    status: Mapped[str] = mapped_column(Text, default="TBD")
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -171,6 +193,8 @@ class Material(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     file_name: Mapped[str] = mapped_column(Text)
     file_url: Mapped[str] = mapped_column(Text)
+    # general | submission_template
+    category: Mapped[str] = mapped_column(Text, default="general")
     uploaded_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("profiles.id"))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -181,8 +205,24 @@ class Announcement(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     posted_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("profiles.id"))
     posted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    admin_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("profiles.id"))
+    action: Mapped[str] = mapped_column(Text)
+    target_table: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Notification(Base):

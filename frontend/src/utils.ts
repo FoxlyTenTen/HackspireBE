@@ -2,8 +2,12 @@
 const GITHUB_RE = /^https:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+(\/.*)?$/
 const DRIVE_RE = /^https:\/\/(drive|docs)\.google\.com\/\S+$/
 
-export function isValidSubmissionUrl(url: string): boolean {
-  return GITHUB_RE.test(url) || DRIVE_RE.test(url)
+export function isValidGithubUrl(url: string): boolean {
+  return GITHUB_RE.test(url)
+}
+
+export function isValidGdriveUrl(url: string): boolean {
+  return DRIVE_RE.test(url)
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

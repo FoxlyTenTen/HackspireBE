@@ -14,6 +14,7 @@ from app.dependencies import require_admin
 from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead
 from app.schemas.common import error_responses
 from app.services import content as content_service
+from app.services.audit import log_admin_action
 
 router = APIRouter(prefix="/admin/submissions", tags=["Admin — Submissions"])
 
@@ -41,7 +42,8 @@ async def list_submissions(
         AdminSubmissionRow(
             team_id=s.team_id,
             team_name=s.team.name,
-            url=s.url,
+            github_url=s.github_url,
+            gdrive_url=s.gdrive_url,
             submitted_at=s.submitted_at,
             updated_at=s.updated_at,
         )
@@ -50,9 +52,13 @@ async def list_submissions(
     if format == "csv":
         buffer = io.StringIO()
         writer = csv.writer(buffer)
-        writer.writerow(["team_id", "team_name", "url", "submitted_at", "updated_at"])
+        writer.writerow(
+            ["team_id", "team_name", "github_url", "gdrive_url", "submitted_at", "updated_at"]
+        )
         for r in rows:
-            writer.writerow([r.team_id, r.team_name, r.url, r.submitted_at, r.updated_at])
+            writer.writerow(
+                [r.team_id, r.team_name, r.github_url, r.gdrive_url, r.submitted_at, r.updated_at]
+            )
         return Response(
             content=buffer.getvalue(),
             media_type="text/csv",
@@ -73,7 +79,7 @@ async def update_deadline(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> EventSettingsRead:
-    row = await content_service.set_submission_deadline(db, body.submission_deadline_at)
+    row = await content_service.set_submission_deadline(db, admin, body.submission_deadline_at)
     return EventSettingsRead(
         countdown_at=row.countdown_at,
         submission_deadline_at=row.submission_deadline_at,
