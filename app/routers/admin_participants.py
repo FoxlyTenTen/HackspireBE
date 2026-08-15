@@ -24,6 +24,7 @@ from app.schemas.admin import (
 )
 from app.schemas.common import error_responses
 from app.services import admin_import
+from app.services.audit import log_admin_action
 
 router = APIRouter(prefix="/admin/participants", tags=["Admin — Participants"])
 
@@ -36,7 +37,9 @@ router = APIRouter(prefix="/admin/participants", tags=["Admin — Participants"]
         "Step 1 of 2: parses the uploaded `.xlsx` and returns a per-row preview "
         "WITHOUT writing anything. Rows with duplicate emails/IDs or missing "
         "required fields are flagged individually — one bad row never rejects the "
-        "whole file. Expected header columns: `name`, `email`, `student_staff_id`."
+        "whole file. Required header columns: `name`, `email`, `student_staff_id`. "
+        "Optional columns: `reference_id`, `university_name`, `technical_skills`, "
+        "`preferred_role`."
     ),
     responses=error_responses(400, 401, 403, 422),
 )
@@ -67,7 +70,7 @@ async def import_confirm(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ImportConfirmResponse:
-    return await admin_import.confirm(db, body.rows)
+    return await admin_import.confirm(db, admin, body.rows)
 
 
 @router.get(
@@ -92,10 +95,34 @@ async def list_participants(
     if format == "csv":
         buffer = io.StringIO()
         writer = csv.writer(buffer)
-        writer.writerow(["id", "name", "email", "student_staff_id", "first_login", "created_at"])
+        writer.writerow(
+            [
+                "id",
+                "name",
+                "email",
+                "student_staff_id",
+                "reference_id",
+                "university_name",
+                "technical_skills",
+                "preferred_role",
+                "first_login",
+                "created_at",
+            ]
+        )
         for p in profiles:
             writer.writerow(
-                [p.id, p.name, p.email, p.student_staff_id, p.first_login, p.created_at]
+                [
+                    p.id,
+                    p.name,
+                    p.email,
+                    p.student_staff_id,
+                    p.reference_id,
+                    p.university_name,
+                    p.technical_skills,
+                    p.preferred_role,
+                    p.first_login,
+                    p.created_at,
+                ]
             )
         return Response(
             content=buffer.getvalue(),
@@ -131,6 +158,9 @@ async def reset_password(
     temporary_password = secrets.token_urlsafe(9)
     profile.hashed_password = await hash_password_async(temporary_password)
     profile.first_login = True
+    log_admin_action(
+        db, admin.id, "participant_password_reset", target_table="profiles", target_id=profile.id
+    )
     await db.commit()
     return ResetPasswordResponse(
         participant_id=profile.id, temporary_password=temporary_password

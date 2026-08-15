@@ -13,8 +13,10 @@ from app.schemas.admin import (
     ImportPreviewResponse,
     ImportRow,
 )
+from app.services.audit import log_admin_action
 
 REQUIRED_COLUMNS = ("name", "email", "student_staff_id")
+OPTIONAL_COLUMNS = ("reference_id", "university_name", "technical_skills", "preferred_role")
 
 
 def _parse_workbook(content: bytes) -> list[dict]:
@@ -43,8 +45,10 @@ def _parse_workbook(content: bytes) -> list[dict]:
         )
 
     def cell(row: tuple, key: str) -> str | None:
-        idx = columns[key]
-        value = row[idx] if idx < len(row) else None
+        idx = columns.get(key)
+        if idx is None or idx >= len(row):
+            return None
+        value = row[idx]
         if value is None:
             return None
         text = str(value).strip()
@@ -60,6 +64,10 @@ def _parse_workbook(content: bytes) -> list[dict]:
                 "name": cell(row, "name"),
                 "email": cell(row, "email"),
                 "student_staff_id": cell(row, "student_staff_id"),
+                "reference_id": cell(row, "reference_id"),
+                "university_name": cell(row, "university_name"),
+                "technical_skills": cell(row, "technical_skills"),
+                "preferred_role": cell(row, "preferred_role"),
             }
         )
     if not parsed:
@@ -105,6 +113,10 @@ def _validate_rows(
                 name=row["name"],
                 email=row["email"],
                 student_staff_id=row["student_staff_id"],
+                reference_id=row.get("reference_id"),
+                university_name=row.get("university_name"),
+                technical_skills=row.get("technical_skills"),
+                preferred_role=row.get("preferred_role"),
                 status="flagged" if issues else "ok",
                 issues=issues,
             )
@@ -124,7 +136,7 @@ async def preview(db: AsyncSession, content: bytes) -> ImportPreviewResponse:
 
 
 async def confirm(
-    db: AsyncSession, rows: list[ImportConfirmRowIn]
+    db: AsyncSession, admin: Profile, rows: list[ImportConfirmRowIn]
 ) -> ImportConfirmResponse:
     """Step 2: re-validate and bulk-create accounts + profiles for clean rows.
 
@@ -139,6 +151,10 @@ async def confirm(
             "name": r.name.strip() or None,
             "email": r.email.strip() or None,
             "student_staff_id": r.student_staff_id.strip() or None,
+            "reference_id": (r.reference_id or "").strip() or None,
+            "university_name": (r.university_name or "").strip() or None,
+            "technical_skills": (r.technical_skills or "").strip() or None,
+            "preferred_role": (r.preferred_role or "").strip() or None,
         }
         for i, r in enumerate(rows, start=1)
     ]
@@ -156,12 +172,23 @@ async def confirm(
                 name=row.name,
                 email=row.email,
                 student_staff_id=row.student_staff_id,
+                reference_id=row.reference_id,
+                university_name=row.university_name,
+                technical_skills=row.technical_skills,
+                preferred_role=row.preferred_role,
                 role="participant",
                 first_login=True,
                 hashed_password=await hash_password_async(row.student_staff_id),
             )
         )
         created += 1
+    log_admin_action(
+        db,
+        admin.id,
+        "participant_imported",
+        target_table="profiles",
+        details=f"{created} created, {len(skipped_rows)} skipped",
+    )
     await db.commit()
     return ImportConfirmResponse(
         created=created, skipped=len(skipped_rows), skipped_rows=skipped_rows

@@ -19,7 +19,7 @@ router = APIRouter(tags=["Participants"])
     description=(
         "All registered participants with their team status (`no_team` or `in_team`) "
         "so leaders can find people to recruit. Filter with the `search` query "
-        "parameter (matches name or student/staff ID)."
+        "parameter (matches name, username, or student/staff ID)."
     ),
     responses=error_responses(401, 403),
 )
@@ -39,14 +39,19 @@ async def list_participants(
     if search:
         pattern = f"%{search}%"
         stmt = stmt.where(
-            Profile.name.ilike(pattern) | Profile.student_staff_id.ilike(pattern)
+            Profile.name.ilike(pattern)
+            | Profile.username.ilike(pattern)
+            | Profile.student_staff_id.ilike(pattern)
         )
     profiles = (await db.scalars(stmt)).all()
     return [
         ParticipantListItem(
             id=p.id,
             name=p.name,
-            student_staff_id=p.student_staff_id,
+            username=p.username,
+            reference_id=p.reference_id,
+            technical_skills=p.technical_skills,
+            preferred_role=p.preferred_role,
             status="in_team" if p.membership else "no_team",
             team_name=p.membership.team.name if p.membership else None,
         )

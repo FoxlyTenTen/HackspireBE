@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import ApiError
 from app.db.models import Notification, Profile
 
 
@@ -48,3 +49,14 @@ async def list_for_user(db: AsyncSession, participant_id: uuid.UUID) -> list[Not
 async def all_participant_ids(db: AsyncSession) -> list[uuid.UUID]:
     result = await db.scalars(select(Profile.id).where(Profile.role == "participant"))
     return list(result)
+
+
+async def mark_read(
+    db: AsyncSession, participant_id: uuid.UUID, notification_id: uuid.UUID
+) -> Notification:
+    notification = await db.get(Notification, notification_id)
+    if notification is None or notification.participant_id != participant_id:
+        raise ApiError(404, "Notification not found")
+    notification.read = True
+    await db.commit()
+    return notification

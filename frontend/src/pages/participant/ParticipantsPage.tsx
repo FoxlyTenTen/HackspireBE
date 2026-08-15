@@ -39,7 +39,7 @@ export default function ParticipantsPage() {
     setMessage(null)
     try {
       await addTeamMember(team.id, participant.id)
-      setMessage(`${participant.name} added to ${team.name}.`)
+      setMessage(`${participant.username ?? participant.name} added to ${team.name}.`)
       await refresh()
       await load(search || undefined)
     } catch (err) {
@@ -55,7 +55,7 @@ export default function ParticipantsPage() {
 
       <form className="inline-form" onSubmit={handleSearch}>
         <input
-          placeholder="Search by name or ID…"
+          placeholder="Search by name, username or ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -65,8 +65,9 @@ export default function ParticipantsPage() {
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>ID</th>
+            <th>Username</th>
+            <th>Reference ID</th>
+            <th>Skills / Role</th>
             <th>Status</th>
             <th>Team</th>
             <th></th>
@@ -75,8 +76,22 @@ export default function ParticipantsPage() {
         <tbody>
           {participants.map((participant) => (
             <tr key={participant.id}>
-              <td>{participant.name}</td>
-              <td>{participant.student_staff_id}</td>
+              <td>{participant.username ?? participant.name}</td>
+              <td>{participant.reference_id ?? '—'}</td>
+              <td>
+                {participant.technical_skills || participant.preferred_role ? (
+                  <>
+                    {participant.technical_skills && (
+                      <div>Skills: {participant.technical_skills}</div>
+                    )}
+                    {participant.preferred_role && (
+                      <div>Preferred role: {participant.preferred_role}</div>
+                    )}
+                  </>
+                ) : (
+                  '—'
+                )}
+              </td>
               <td>
                 <span
                   className={`badge ${participant.status === 'no_team' ? 'status-open' : ''}`}
