@@ -15,6 +15,7 @@ class ProfileRead(BaseModel):
     role: Literal["participant", "admin"]
     first_login: bool
     created_at: datetime
+    #update exxpertise
 
 
 class ParticipantListItem(BaseModel):

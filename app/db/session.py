@@ -7,7 +7,7 @@ from app.core.config import settings
 
 _url = settings.sqlalchemy_database_url
 
-_engine_kwargs: dict = {"echo": False}
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True, "pool_recycle": 300}
 if _url.startswith("postgresql+asyncpg"):
     # Supabase connections typically go through pgbouncer/Supavisor in
     # transaction mode, which breaks asyncpg's prepared-statement caching
