@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { getProfile, updateProfile } from '../../api/endpoints'
 import type { ProfileRead } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
+import { useMyTeam } from '../../context/MyTeamContext'
 import { formatDateTime } from '../../utils'
 
 export default function ProfilePage() {
+  const { team } = useMyTeam()
   const [profile, setProfile] = useState<ProfileRead | null>(null)
   const [username, setUsername] = useState('')
   const [universityName, setUniversityName] = useState('')
@@ -66,6 +69,13 @@ export default function ProfilePage() {
           <>
             <br />
             <strong>Reference ID:</strong> {profile.reference_id}
+          </>
+        )}
+        {team?.reference_id && (
+          <>
+            <br />
+            <strong>Team reference ID:</strong>{' '}
+            <Link to={`/teams/${team.id}`}>{team.reference_id}</Link>
           </>
         )}
         <br />

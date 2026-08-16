@@ -45,7 +45,8 @@ export default function TeamsPage() {
     }
   }
 
-  const handleJoinRequest = async (teamId: string) => {
+  const handleJoinRequest = async (teamId: string, teamName: string) => {
+    if (!window.confirm(`Send request to join ${teamName}?`)) return
     setError(null)
     setMessage(null)
     try {
@@ -113,7 +114,7 @@ export default function TeamsPage() {
               </td>
               <td>
                 {canJoin(team) && (
-                  <button onClick={() => void handleJoinRequest(team.id)}>
+                  <button onClick={() => void handleJoinRequest(team.id, team.name)}>
                     Request to join
                   </button>
                 )}

@@ -1,34 +1,40 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { Outlet } from 'react-router-dom'
+import {
+  AuditLogIcon,
+  EventContentIcon,
+  HomeIcon,
+  ParticipantsIcon,
+  SubmissionIcon,
+  TeamsIcon,
+} from './icons'
+import Sidebar from './Sidebar'
+import type { SidebarItem } from './Sidebar'
+import TopBar from './TopBar'
+
+const items: SidebarItem[] = [
+  { to: '/administrator/participants', label: 'Participants', icon: <ParticipantsIcon /> },
+  { to: '/administrator/teams', label: 'Teams', icon: <TeamsIcon /> },
+  { to: '/administrator/event', label: 'Event Content', icon: <EventContentIcon /> },
+  { to: '/administrator/submissions', label: 'Submissions', icon: <SubmissionIcon /> },
+  { to: '/administrator/audit-log', label: 'Audit Log', icon: <AuditLogIcon /> },
+  { to: '/', label: 'View Participant Portal', icon: <HomeIcon /> },
+]
 
 export default function AdminLayout() {
-  const { logout } = useAuth()
-  const navigate = useNavigate()
-
-  const handleLogout = () => {
-    logout()
-    navigate('/administrator')
-  }
-
   return (
-    <>
-      <nav className="navbar admin">
-        <Link to="/administrator/teams" className="brand">
-          LUMINA Admin
-        </Link>
-        <NavLink to="/administrator/participants">Participants</NavLink>
-        <NavLink to="/administrator/teams">Teams</NavLink>
-        <NavLink to="/administrator/event">Event Content</NavLink>
-        <NavLink to="/administrator/submissions">Submissions</NavLink>
-        <NavLink to="/administrator/audit-log">Audit Log</NavLink>
-        <Link to="/">View Participant Portal</Link>
-        <button className="link-button" onClick={handleLogout}>
-          Log out
-        </button>
-      </nav>
-      <main className="container">
-        <Outlet />
-      </main>
-    </>
+    <div className="app-shell">
+      <Sidebar
+        brand="LUMINA Admin"
+        items={items}
+        storageKey="sidebar-collapsed-admin"
+        variant="admin"
+      />
+      <div className="app-main">
+        <TopBar showProfile={false} showNotifications={false} logoutRedirect="/administrator" />
+        <main className="container">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   )
 }

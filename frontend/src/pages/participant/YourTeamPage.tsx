@@ -75,9 +75,7 @@ export default function YourTeamPage() {
 
   return (
     <div>
-      <h1>
-        {team.name} {team.reference_id && <span className="muted">({team.reference_id})</span>}
-      </h1>
+      <h1>{team.name}</h1>
       <ErrorBanner message={error} />
       <p>
         <span className={`badge status-${team.status}`}>{team.status}</span>{' '}
@@ -89,11 +87,11 @@ export default function YourTeamPage() {
           <strong>Admin note:</strong> {team.admin_note}
         </p>
       )}
-      <p>
-        Members: {team.member_count}/{team.capacity}
-      </p>
 
-      <h2>Members</h2>
+      <h2>
+        {team.reference_id && <span className="muted">[{team.reference_id}] · </span>}
+        {team.member_count} of {team.capacity} members
+      </h2>
       <table>
         <tbody>
           {team.members.map((member) => (

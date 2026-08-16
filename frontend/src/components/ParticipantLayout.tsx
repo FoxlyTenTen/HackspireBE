@@ -1,48 +1,68 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { MyTeamProvider, useMyTeam } from '../context/MyTeamContext'
+import {
+  AnnouncementsIcon,
+  BackIcon,
+  HomeIcon,
+  MyTeamIcon,
+  ParticipantsIcon,
+  SubmissionIcon,
+  TeamsIcon,
+} from './icons'
+import Sidebar from './Sidebar'
+import type { SidebarItem } from './Sidebar'
+import TopBar from './TopBar'
 
-function NavBar() {
-  const { auth, logout } = useAuth()
+function Shell() {
+  const { auth } = useAuth()
   const isAdmin = auth?.role === 'admin'
   const { team } = useMyTeam()
-  const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
-    navigate(isAdmin ? '/administrator' : '/login')
+  const items: SidebarItem[] = [
+    { to: '/', label: 'Home', icon: <HomeIcon />, end: true },
+    { to: '/teams', label: 'Teams', icon: <TeamsIcon /> },
+    { to: '/participants', label: 'Participants', icon: <ParticipantsIcon /> },
+    { to: '/announcements', label: 'Announcements', icon: <AnnouncementsIcon /> },
+  ]
+  if (team) {
+    items.push({ to: `/teams/${team.id}`, label: 'My Team', icon: <MyTeamIcon /> })
+    items.push({
+      to: `/teams/${team.id}/submission`,
+      label: 'Submission',
+      icon: <SubmissionIcon />,
+    })
+  }
+  if (isAdmin) {
+    items.push({ to: '/administrator/teams', label: 'Back to Admin', icon: <BackIcon /> })
   }
 
   return (
-    <nav className="navbar">
-      <Link to="/" className="brand">
-        HACKSPIRE: LUMINA {isAdmin && <span className="badge">admin view</span>}
-      </Link>
-      <NavLink to="/">Home</NavLink>
-      <NavLink to="/teams">Teams</NavLink>
-      <NavLink to="/participants">Participants</NavLink>
-      <NavLink to="/announcements">Announcements</NavLink>
-      <NavLink to="/notifications">Notifications</NavLink>
-      {team && <NavLink to={`/teams/${team.id}`}>My Team</NavLink>}
-      {team && <NavLink to={`/teams/${team.id}/submission`}>Submission</NavLink>}
-      {!isAdmin && <NavLink to="/profile">Profile</NavLink>}
-      {isAdmin && (
-        <Link to="/administrator/teams">Back to Admin</Link>
-      )}
-      <button className="link-button" onClick={handleLogout}>
-        Log out
-      </button>
-    </nav>
+    <div className="app-shell">
+      <Sidebar
+        brand="HACKSPIRE: LUMINA"
+        items={items}
+        storageKey="sidebar-collapsed-participant"
+      />
+      <div className="app-main">
+        <TopBar
+          previewBadge={isAdmin}
+          showProfile={!isAdmin}
+          showNotifications
+          logoutRedirect={isAdmin ? '/administrator' : '/login'}
+        />
+        <main className="container">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   )
 }
 
 export default function ParticipantLayout() {
   return (
     <MyTeamProvider>
-      <NavBar />
-      <main className="container">
-        <Outlet />
-      </main>
+      <Shell />
     </MyTeamProvider>
   )
 }
