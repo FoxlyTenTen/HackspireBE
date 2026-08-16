@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     participant_cap: int = 150
 
+    # Supabase Storage buckets (public) — must already exist in the project.
+    supabase_storage_bucket_materials: str = "materials"
+    supabase_storage_bucket_announcements: str = "announcement-images"
+
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     @property

@@ -32,7 +32,7 @@ from app.schemas.event import (
 from app.services import content as content_service
 from app.services import timeline_import as timeline_import_service
 from app.services.audit import log_admin_action
-from app.services.storage import get_storage
+from app.services.storage import get_announcements_storage, get_materials_storage
 
 router = APIRouter(prefix="/admin", tags=["Admin — Event Content"])
 
@@ -149,10 +149,7 @@ async def put_winners(
     response_model=MaterialRead,
     status_code=status.HTTP_201_CREATED,
     summary="Upload a material file",
-    description=(
-        "Stored on local disk in dev behind a storage interface that is swappable "
-        "for Supabase Storage later."
-    ),
+    description="Stored in a public Supabase Storage bucket.",
     responses=error_responses(400, 401, 403, 422),
 )
 async def upload_material(
@@ -164,7 +161,7 @@ async def upload_material(
     content = await file.read()
     if not content:
         raise ApiError(400, "Uploaded file is empty")
-    file_url = await get_storage().save(file.filename or "material", content)
+    file_url = await get_materials_storage().save(file.filename or "material", content)
     material = Material(
         file_name=file.filename or "material",
         file_url=file_url,
@@ -194,7 +191,7 @@ async def delete_material(
     material = await db.get(Material, material_id)
     if material is None:
         raise ApiError(404, "Material not found")
-    await get_storage().delete(material.file_url)
+    await get_materials_storage().delete(material.file_url)
     log_admin_action(
         db, admin.id, "material_deleted", target_table="materials", target_id=material.id
     )
@@ -225,7 +222,7 @@ async def post_announcement(
         content = await image.read()
         if not content:
             raise ApiError(400, "Uploaded image is empty")
-        image_url = await get_storage().save(image.filename, content)
+        image_url = await get_announcements_storage().save(image.filename, content)
     return await content_service.create_announcement(db, admin, title, body, image_url)
 
 
@@ -251,9 +248,9 @@ async def patch_announcement(
             raise ApiError(400, "Uploaded image is empty")
         existing = await content_service.get_announcement_or_404(db, announcement_id)
         old_image_url = existing.image_url
-        image_url = await get_storage().save(image.filename, content)
+        image_url = await get_announcements_storage().save(image.filename, content)
         if old_image_url:
-            await get_storage().delete(old_image_url)
+            await get_announcements_storage().delete(old_image_url)
     return await content_service.update_announcement(
         db, admin, announcement_id, title, body, image_url
     )
@@ -274,7 +271,7 @@ async def delete_announcement(
     image_url = announcement.image_url
     await content_service.delete_announcement(db, admin, announcement_id)
     if image_url:
-        await get_storage().delete(image_url)
+        await get_announcements_storage().delete(image_url)
 
 
 @router.get(

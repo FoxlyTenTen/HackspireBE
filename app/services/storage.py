@@ -1,8 +1,10 @@
+import mimetypes
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 from app.core.config import settings
+from app.services import supabase_storage
 
 
 class StorageBackend(ABC):
@@ -36,5 +38,24 @@ class LocalDiskStorage(StorageBackend):
             path.unlink()
 
 
-def get_storage() -> StorageBackend:
-    return LocalDiskStorage(settings.upload_dir)
+class SupabaseStorage(StorageBackend):
+    def __init__(self, bucket: str):
+        self.bucket = bucket
+
+    async def save(self, file_name: str, content: bytes) -> str:
+        safe_name = Path(file_name).name  # strip any client-supplied directories
+        object_path = f"{uuid.uuid4().hex}_{safe_name}"
+        content_type = mimetypes.guess_type(safe_name)[0]
+        return await supabase_storage.upload_object(self.bucket, object_path, content, content_type)
+
+    async def delete(self, file_url: str) -> None:
+        object_path = file_url.rsplit(f"/{self.bucket}/", 1)[-1]
+        await supabase_storage.delete_object(self.bucket, object_path)
+
+
+def get_materials_storage() -> StorageBackend:
+    return SupabaseStorage(settings.supabase_storage_bucket_materials)
+
+
+def get_announcements_storage() -> StorageBackend:
+    return SupabaseStorage(settings.supabase_storage_bucket_announcements)

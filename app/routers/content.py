@@ -1,11 +1,10 @@
 import uuid
-from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, Depends
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.errors import ApiError
 from app.db.models import Material, Profile
 from app.db.session import get_db
@@ -62,14 +61,19 @@ async def download_material(
     material_id: uuid.UUID,
     user: Profile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> FileResponse:
+) -> Response:
     material = await db.get(Material, material_id)
     if material is None:
         raise ApiError(404, "Material not found")
-    path = Path(settings.upload_dir) / Path(material.file_url).name
-    if not path.is_file():
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        upstream = await client.get(material.file_url)
+    if upstream.status_code != 200:
         raise ApiError(404, "Material file not found")
-    return FileResponse(path, filename=material.file_name, media_type="application/octet-stream")
+    return Response(
+        content=upstream.content,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{material.file_name}"'},
+    )
 
 
 @router.get(

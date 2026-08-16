@@ -144,9 +144,10 @@ async def list_participants(
     summary="Correct a participant's email address (admin)",
     description=(
         "For fixing a wrong address in the imported Excel. Updates the email "
-        "immediately via Supabase Auth's admin API (no confirmation link), "
-        "then — if the participant never activated their account — sends a "
-        "fresh set-password link to the corrected address."
+        "immediately via Supabase Auth's admin API (no confirmation link). "
+        "Supabase's admin email update leaves password sign-in unreliable "
+        "afterward even for already-activated accounts, so a set-password / "
+        "reset link is always sent to the corrected address."
     ),
     responses=error_responses(401, 403, 404, 409, 503),
 )
@@ -183,11 +184,11 @@ async def change_participant_email(
                 new_email, secrets.token_urlsafe(16), email_confirm=True
             )
     profile.email = new_email
-    never_activated = profile.invite_status != "active"
-    if never_activated:
-        # They have no password yet — the recovery link doubles as "set your
-        # password" and lands on the same /accept-invite page as an invite.
-        await supabase_auth.reset_password_for_email(new_email)
+    # Supabase's admin email update leaves password sign-in unreliable even for
+    # already-activated accounts, so always send a reset link — it doubles as
+    # "set your password" for never-activated accounts too, landing on the
+    # same /accept-invite page as an invite.
+    await supabase_auth.reset_password_for_email(new_email)
     log_admin_action(
         db,
         admin.id,
@@ -199,8 +200,8 @@ async def change_participant_email(
     await db.commit()
     return MessageResponse(
         message=(
-            f"Email updated to {new_email}"
-            + (" — a set-password link was sent to the new address." if never_activated else ".")
+            f"Email updated to {new_email} — a set-password link was sent to the "
+            "new address (required for sign-in to keep working after an email change)."
         )
     )
 
