@@ -112,18 +112,6 @@ class WinnersPut(BaseModel):
     published: bool = Field(default=False)
 
 
-class AnnouncementCreate(BaseModel):
-    title: str = Field(examples=["Lunch is served"])
-    body: str = Field(examples=["Food trucks are open at the main hall until 2pm."])
-    image_url: str | None = Field(default=None)
-
-
-class AnnouncementUpdate(BaseModel):
-    title: str | None = Field(default=None)
-    body: str | None = Field(default=None)
-    image_url: str | None = Field(default=None)
-
-
 class AnnouncementRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

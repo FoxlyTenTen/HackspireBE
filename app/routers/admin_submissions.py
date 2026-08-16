@@ -41,6 +41,7 @@ async def list_submissions(
     rows = [
         AdminSubmissionRow(
             team_id=s.team_id,
+            team_reference_id=s.team.reference_id,
             team_name=s.team.name,
             github_url=s.github_url,
             gdrive_url=s.gdrive_url,
@@ -53,11 +54,25 @@ async def list_submissions(
         buffer = io.StringIO()
         writer = csv.writer(buffer)
         writer.writerow(
-            ["team_id", "team_name", "github_url", "gdrive_url", "submitted_at", "updated_at"]
+            [
+                "team_reference_id",
+                "team_name",
+                "github_url",
+                "gdrive_url",
+                "submitted_at",
+                "updated_at",
+            ]
         )
         for r in rows:
             writer.writerow(
-                [r.team_id, r.team_name, r.github_url, r.gdrive_url, r.submitted_at, r.updated_at]
+                [
+                    r.team_reference_id,
+                    r.team_name,
+                    r.github_url,
+                    r.gdrive_url,
+                    r.submitted_at,
+                    r.updated_at,
+                ]
             )
         return Response(
             content=buffer.getvalue(),

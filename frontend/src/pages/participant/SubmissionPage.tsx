@@ -21,6 +21,7 @@ export default function SubmissionPage() {
   const [submission, setSubmission] = useState<SubmissionRead | null>(null)
   const [deadline, setDeadline] = useState<string | null>(null)
   const [isMember, setIsMember] = useState(false)
+  const [isApproved, setIsApproved] = useState(false)
   const [githubUrl, setGithubUrl] = useState('')
   const [gdriveUrl, setGdriveUrl] = useState('')
   const [templates, setTemplates] = useState<MaterialRead[]>([])
@@ -37,6 +38,7 @@ export default function SubmissionPage() {
       const team = await getTeam(teamId)
       const userId = auth?.userId ?? ''
       setIsMember(team.members.some((m) => m.participant_id === userId))
+      setIsApproved(team.approval_status === 'approved')
       const materials = await getMaterials()
       setTemplates(materials.filter((m) => m.category === 'submission_template'))
       try {
@@ -169,7 +171,12 @@ export default function SubmissionPage() {
         <p>No submission yet.</p>
       )}
 
-      {isMember && !deadlinePassed && (
+      {isMember && !isApproved && (
+        <p className="muted">
+          Your team must be approved by an admin before you can submit links.
+        </p>
+      )}
+      {isMember && isApproved && !deadlinePassed && (
         <form className="stack-form" onSubmit={handleSubmit}>
           <label>
             GitHub link
@@ -190,7 +197,7 @@ export default function SubmissionPage() {
           <button type="submit">{submission ? 'Update links' : 'Submit links'}</button>
         </form>
       )}
-      {isMember && deadlinePassed && (
+      {isMember && isApproved && deadlinePassed && (
         <p className="muted">The deadline has passed — the links can no longer be changed.</p>
       )}
       {!isMember && <p className="muted">Only team members can submit or edit the links.</p>}

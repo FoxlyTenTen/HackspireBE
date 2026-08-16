@@ -75,6 +75,7 @@ export default function AdminSubmissionsPage() {
       <table>
         <thead>
           <tr>
+            <th>Ref</th>
             <th>Team</th>
             <th>GitHub</th>
             <th>Drive</th>
@@ -85,6 +86,7 @@ export default function AdminSubmissionsPage() {
         <tbody>
           {rows.map((row) => (
             <tr key={row.team_id}>
+              <td>{row.team_reference_id ?? '—'}</td>
               <td>{row.team_name}</td>
               <td>
                 {row.github_url ? (

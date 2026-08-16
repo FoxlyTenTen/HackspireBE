@@ -20,6 +20,8 @@ export default function AdminLayout() {
         <NavLink to="/administrator/teams">Teams</NavLink>
         <NavLink to="/administrator/event">Event Content</NavLink>
         <NavLink to="/administrator/submissions">Submissions</NavLink>
+        <NavLink to="/administrator/audit-log">Audit Log</NavLink>
+        <Link to="/">View Participant Portal</Link>
         <button className="link-button" onClick={handleLogout}>
           Log out
         </button>

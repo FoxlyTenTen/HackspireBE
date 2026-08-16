@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getAnnouncements } from '../../api/endpoints'
 import type { AnnouncementRead } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
-import { formatDateTime } from '../../utils'
+import { formatDateTime, resolveFileUrl } from '../../utils'
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementRead[]>([])
@@ -23,7 +23,9 @@ export default function AnnouncementsPage() {
         {announcements.map((a) => (
           <li key={a.id} className="announcement-card">
             <h2>{a.title}</h2>
-            {a.image_url && <img src={a.image_url} alt={a.title} className="announcement-image" />}
+            {a.image_url && (
+              <img src={resolveFileUrl(a.image_url) ?? ''} alt={a.title} className="announcement-image" />
+            )}
             <p>{a.body}</p>
             <div className="muted">
               Posted {formatDateTime(a.posted_at)}

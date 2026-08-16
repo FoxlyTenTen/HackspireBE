@@ -224,6 +224,8 @@ class AuditLog(Base):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+    admin: Mapped[Profile] = relationship()
+
 
 class Notification(Base):
     __tablename__ = "notifications"

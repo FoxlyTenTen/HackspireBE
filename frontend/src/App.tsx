@@ -4,6 +4,7 @@ import AdminRoute from './components/AdminRoute'
 import ParticipantLayout from './components/ParticipantLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import AdminAuditLogPage from './pages/admin/AuditLogPage'
 import AdminLoginPage from './pages/admin/LoginPage'
 import AdminParticipantsPage from './pages/admin/ParticipantsPage'
 import AdminSubmissionsPage from './pages/admin/SubmissionsPage'
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/administrator/teams" element={<AdminTeamsPage />} />
               <Route path="/administrator/event" element={<EventContentPage />} />
               <Route path="/administrator/submissions" element={<AdminSubmissionsPage />} />
+              <Route path="/administrator/audit-log" element={<AdminAuditLogPage />} />
             </Route>
           </Route>
 

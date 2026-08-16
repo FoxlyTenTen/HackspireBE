@@ -20,6 +20,16 @@ export function localInputToIso(value: string): string {
   return new Date(value).toISOString()
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+
+/** Resolves a backend-relative file path (e.g. `/uploads/xyz.png`) to an absolute URL. */
+export function resolveFileUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (/^https?:\/\//.test(path)) return path
+  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
 export function downloadBlob(data: Blob, filename: string): void {
   const url = URL.createObjectURL(data)
   const a = document.createElement('a')

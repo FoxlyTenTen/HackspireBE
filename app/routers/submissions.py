@@ -31,8 +31,8 @@ async def get_submission(
     status_code=status.HTTP_201_CREATED,
     summary="Submit the project links (any team member)",
     description=(
-        "github_url and/or gdrive_url — at least one is required. Blocked once "
-        "the submission deadline has passed."
+        "github_url and/or gdrive_url — at least one is required. Requires the "
+        "team to be admin-approved. Blocked once the submission deadline has passed."
     ),
     responses=error_responses(400, 401, 403, 404, 409, 422),
 )
@@ -43,7 +43,7 @@ async def create_submission(
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionRead:
     return await submission_service.create_submission(
-        db, team.id, user.id, body.github_url, body.gdrive_url
+        db, team, user.id, body.github_url, body.gdrive_url
     )
 
 
@@ -61,5 +61,5 @@ async def update_submission(
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionRead:
     return await submission_service.update_submission(
-        db, team.id, user.id, body.github_url, body.gdrive_url
+        db, team, user.id, body.github_url, body.gdrive_url
     )

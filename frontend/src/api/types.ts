@@ -275,6 +275,7 @@ export interface AdminTeamUpdate {
 
 export interface AdminSubmissionRow {
   team_id: string
+  team_reference_id: string | null
   team_name: string
   github_url: string | null
   gdrive_url: string | null
@@ -286,4 +287,15 @@ export interface EventSettingsRead {
   countdown_at: string | null
   submission_deadline_at: string | null
   updated_at: string
+}
+
+export interface AuditLogRead {
+  id: string
+  admin_id: string
+  admin_name: string | null
+  action: string
+  target_table: string | null
+  target_id: string | null
+  details: string | null
+  created_at: string
 }

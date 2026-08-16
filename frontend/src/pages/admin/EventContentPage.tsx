@@ -27,7 +27,7 @@ import type {
   TimelineStatus,
 } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
-import { formatDateTime, localInputToIso } from '../../utils'
+import { formatDateTime, localInputToIso, resolveFileUrl } from '../../utils'
 
 const TIMELINE_STATUSES: TimelineStatus[] = ['TBD', 'Proposed', 'Confirmed', 'Declined']
 
@@ -67,7 +67,8 @@ export default function EventContentPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementRead[]>([])
   const [announceTitle, setAnnounceTitle] = useState('')
   const [announceBody, setAnnounceBody] = useState('')
-  const [announceImageUrl, setAnnounceImageUrl] = useState('')
+  const [announceImage, setAnnounceImage] = useState<File | null>(null)
+  const [announceExistingImageUrl, setAnnounceExistingImageUrl] = useState<string | null>(null)
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -204,21 +205,21 @@ export default function EventContentPage() {
 
   const handleAnnounce = (e: FormEvent) => {
     e.preventDefault()
-    const imageUrl = announceImageUrl || null
     void act(
       () =>
         editingAnnouncementId
           ? adminUpdateAnnouncement(editingAnnouncementId, {
               title: announceTitle,
               body: announceBody,
-              image_url: imageUrl,
+              image: announceImage,
             })
-          : adminPostAnnouncement(announceTitle, announceBody, imageUrl),
+          : adminPostAnnouncement(announceTitle, announceBody, announceImage),
       editingAnnouncementId ? 'Announcement updated.' : 'Announcement posted — all participants notified.',
     ).then(() => {
       setAnnounceTitle('')
       setAnnounceBody('')
-      setAnnounceImageUrl('')
+      setAnnounceImage(null)
+      setAnnounceExistingImageUrl(null)
       setEditingAnnouncementId(null)
     })
   }
@@ -227,14 +228,16 @@ export default function EventContentPage() {
     setEditingAnnouncementId(a.id)
     setAnnounceTitle(a.title)
     setAnnounceBody(a.body)
-    setAnnounceImageUrl(a.image_url ?? '')
+    setAnnounceImage(null)
+    setAnnounceExistingImageUrl(a.image_url ?? null)
   }
 
   const cancelEditAnnouncement = () => {
     setEditingAnnouncementId(null)
     setAnnounceTitle('')
     setAnnounceBody('')
-    setAnnounceImageUrl('')
+    setAnnounceImage(null)
+    setAnnounceExistingImageUrl(null)
   }
 
   return (
@@ -579,13 +582,22 @@ export default function EventContentPage() {
             />
           </label>
           <label>
-            Image URL (optional)
+            Image (optional)
             <input
-              value={announceImageUrl}
-              onChange={(e) => setAnnounceImageUrl(e.target.value)}
-              placeholder="https://..."
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAnnounceImage(e.target.files?.[0] ?? null)}
             />
           </label>
+          {announceExistingImageUrl && !announceImage && (
+            <p className="muted">
+              Current image:{' '}
+              <a href={resolveFileUrl(announceExistingImageUrl) ?? ''} target="_blank" rel="noreferrer">
+                view
+              </a>{' '}
+              (choose a new file to replace it)
+            </p>
+          )}
           <button type="submit">
             {editingAnnouncementId ? 'Save changes' : 'Post (notifies all participants)'}
           </button>{' '}
@@ -600,6 +612,13 @@ export default function EventContentPage() {
           {announcements.map((a) => (
             <li key={a.id} className="announcement-card">
               <strong>{a.title}</strong>
+              {a.image_url && (
+                <img
+                  src={resolveFileUrl(a.image_url) ?? ''}
+                  alt={a.title}
+                  className="announcement-image"
+                />
+              )}
               <p>{a.body}</p>
               <div className="muted">
                 Posted {formatDateTime(a.posted_at)}

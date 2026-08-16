@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.db.models import EventSettings, Submission
+from app.db.models import EventSettings, Submission, Team
 
 GITHUB_RE = re.compile(r"^https://(www\.)?github\.com/[\w.-]+/[\w.-]+(/.*)?$")
 DRIVE_RE = re.compile(r"^https://(drive|docs)\.google\.com/[^\s]+$")
@@ -59,13 +59,20 @@ async def get_submission(db: AsyncSession, team_id: uuid.UUID) -> Submission:
     return submission
 
 
+def ensure_team_approved(team: Team) -> None:
+    if team.approval_status != "approved":
+        raise ApiError(403, "Your team must be approved by an admin before submitting")
+
+
 async def create_submission(
     db: AsyncSession,
-    team_id: uuid.UUID,
+    team: Team,
     user_id: uuid.UUID,
     github_url: str | None,
     gdrive_url: str | None,
 ) -> Submission:
+    team_id = team.id
+    ensure_team_approved(team)
     validate_links(github_url, gdrive_url)
     await ensure_deadline_open(db)
     existing = await db.scalar(select(Submission).where(Submission.team_id == team_id))
@@ -84,14 +91,15 @@ async def create_submission(
 
 async def update_submission(
     db: AsyncSession,
-    team_id: uuid.UUID,
+    team: Team,
     user_id: uuid.UUID,
     github_url: str | None,
     gdrive_url: str | None,
 ) -> Submission:
+    ensure_team_approved(team)
     validate_links(github_url, gdrive_url)
     await ensure_deadline_open(db)
-    submission = await get_submission(db, team_id)
+    submission = await get_submission(db, team.id)
     submission.github_url = github_url
     submission.gdrive_url = gdrive_url
     submission.submitted_by = user_id

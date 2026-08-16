@@ -4,9 +4,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createTeam, listTeams, requestToJoin } from '../../api/endpoints'
 import type { TeamListItem } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
+import { useAuth } from '../../context/AuthContext'
 import { useMyTeam } from '../../context/MyTeamContext'
 
 export default function TeamsPage() {
+  const { auth } = useAuth()
+  const isAdmin = auth?.role === 'admin'
   const { team: myTeam, refresh } = useMyTeam()
   const navigate = useNavigate()
   const [teams, setTeams] = useState<TeamListItem[]>([])
@@ -54,7 +57,7 @@ export default function TeamsPage() {
   }
 
   const canJoin = (team: TeamListItem) =>
-    !myTeam && (team.status === 'open' || team.status === 'looking_for_teammates')
+    !isAdmin && !myTeam && (team.status === 'open' || team.status === 'looking_for_teammates')
 
   return (
     <div>
@@ -62,7 +65,9 @@ export default function TeamsPage() {
       <ErrorBanner message={error} />
       {message && <div className="success-banner">{message}</div>}
 
-      {!myTeam && (
+      {isAdmin && <p className="muted">Viewing as admin — read-only, you can't create or join a team.</p>}
+
+      {!isAdmin && !myTeam && (
         <form className="inline-form" onSubmit={handleCreate}>
           <input
             placeholder="New team name"

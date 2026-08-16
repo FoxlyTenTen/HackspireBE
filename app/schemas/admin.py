@@ -143,6 +143,7 @@ class AdminRejectRequest(BaseModel):
 
 class AdminSubmissionRow(BaseModel):
     team_id: uuid.UUID
+    team_reference_id: str | None
     team_name: str
     github_url: str | None
     gdrive_url: str | None
@@ -165,6 +166,7 @@ class EventSettingsRead(BaseModel):
 class AuditLogRead(BaseModel):
     id: uuid.UUID
     admin_id: uuid.UUID
+    admin_name: str | None
     action: str
     target_table: str | None
     target_id: uuid.UUID | None

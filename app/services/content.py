@@ -18,8 +18,6 @@ from app.db.models import (
     Winner,
 )
 from app.schemas.event import (
-    AnnouncementCreate,
-    AnnouncementUpdate,
     EventInfoResponse,
     FinalistRead,
     FinalistsPut,
@@ -203,10 +201,10 @@ async def put_winners(db: AsyncSession, admin: Profile, data: WinnersPut) -> lis
 
 
 async def create_announcement(
-    db: AsyncSession, admin: Profile, data: AnnouncementCreate
+    db: AsyncSession, admin: Profile, title: str, body: str, image_url: str | None
 ) -> Announcement:
     announcement = Announcement(
-        title=data.title, body=data.body, image_url=data.image_url, posted_by=admin.id
+        title=title, body=body, image_url=image_url, posted_by=admin.id
     )
     db.add(announcement)
     await db.flush()
@@ -215,7 +213,7 @@ async def create_announcement(
         db,
         recipients,
         "announcement",
-        f"{data.title}: {data.body}",
+        f"{title}: {body}",
         reference_id=announcement.id,
     )
     log_admin_action(
@@ -241,15 +239,20 @@ async def list_announcements(db: AsyncSession) -> list[Announcement]:
 
 
 async def update_announcement(
-    db: AsyncSession, admin: Profile, announcement_id: uuid.UUID, data: AnnouncementUpdate
+    db: AsyncSession,
+    admin: Profile,
+    announcement_id: uuid.UUID,
+    title: str | None,
+    body: str | None,
+    image_url: str | None,
 ) -> Announcement:
     announcement = await get_announcement_or_404(db, announcement_id)
-    if data.title is not None:
-        announcement.title = data.title
-    if data.body is not None:
-        announcement.body = data.body
-    if data.image_url is not None:
-        announcement.image_url = data.image_url
+    if title is not None:
+        announcement.title = title
+    if body is not None:
+        announcement.body = body
+    if image_url is not None:
+        announcement.image_url = image_url
     announcement.updated_at = datetime.now(timezone.utc)
     log_admin_action(
         db,

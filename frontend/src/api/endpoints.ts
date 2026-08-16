@@ -5,6 +5,7 @@ import type {
   AdminTeamRead,
   AdminTeamUpdate,
   AnnouncementRead,
+  AuditLogRead,
   EventInfo,
   EventSettingsRead,
   FinalistRead,
@@ -232,21 +233,34 @@ export const adminUploadMaterial = (file: File, category: MaterialCategory = 'ge
 export const adminDeleteMaterial = (materialId: string) =>
   client.delete(`/admin/materials/${materialId}`).then((r) => r.data)
 
-export const adminPostAnnouncement = (title: string, body: string, image_url?: string | null) =>
-  client
-    .post<AnnouncementRead>('/admin/announcements', { title, body, image_url })
-    .then((r) => r.data)
+export const adminPostAnnouncement = (title: string, body: string, image?: File | null) => {
+  const form = new FormData()
+  form.append('title', title)
+  form.append('body', body)
+  if (image) form.append('image', image)
+  return client.post<AnnouncementRead>('/admin/announcements', form).then((r) => r.data)
+}
 
 export const adminUpdateAnnouncement = (
   announcementId: string,
-  body: { title?: string; body?: string; image_url?: string | null },
-) =>
-  client
-    .patch<AnnouncementRead>(`/admin/announcements/${announcementId}`, body)
+  fields: { title?: string; body?: string; image?: File | null },
+) => {
+  const form = new FormData()
+  if (fields.title !== undefined) form.append('title', fields.title)
+  if (fields.body !== undefined) form.append('body', fields.body)
+  if (fields.image) form.append('image', fields.image)
+  return client
+    .patch<AnnouncementRead>(`/admin/announcements/${announcementId}`, form)
     .then((r) => r.data)
+}
 
 export const adminDeleteAnnouncement = (announcementId: string) =>
   client.delete(`/admin/announcements/${announcementId}`).then((r) => r.data)
+
+export const adminGetAuditLog = (limit = 100, offset = 0) =>
+  client
+    .get<AuditLogRead[]>('/admin/audit-log', { params: { limit, offset } })
+    .then((r) => r.data)
 
 // ---------- Admin — Submissions ----------
 export const adminGetSubmissions = () =>
