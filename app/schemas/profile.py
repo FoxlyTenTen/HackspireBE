@@ -15,11 +15,14 @@ class ProfileRead(BaseModel):
     role: Literal["participant", "admin"]
     first_login: bool
     username: str | None
-    email_verified: bool
     reference_id: str | None
     university_name: str | None
     technical_skills: str | None
     preferred_role: str | None
+    invite_status: str | None = Field(
+        default=None,
+        description="invited (email sent, not accepted) | active | failed (reserved)",
+    )
     created_at: datetime
 
 

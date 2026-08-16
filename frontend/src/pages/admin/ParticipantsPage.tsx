@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import {
+  adminChangeParticipantEmail,
   adminGetParticipants,
   adminImportConfirm,
   adminImportPreview,
@@ -20,6 +21,7 @@ export default function AdminParticipantsPage() {
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null)
   const [confirmResult, setConfirmResult] = useState<ImportConfirmResponse | null>(null)
   const [resetInfo, setResetInfo] = useState<{ name: string; password: string } | null>(null)
+  const [emailMessage, setEmailMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -83,6 +85,24 @@ export default function AdminParticipantsPage() {
     }
   }
 
+  const handleEditEmail = async (participantId: string, name: string, currentEmail: string) => {
+    const newEmail = window.prompt(
+      `Correct the email for ${name} (current: ${currentEmail}). ` +
+        'If they never activated their account, a fresh set-password link is sent to the new address.',
+      currentEmail,
+    )
+    if (!newEmail || newEmail.trim().toLowerCase() === currentEmail.toLowerCase()) return
+    setError(null)
+    setEmailMessage(null)
+    try {
+      const result = await adminChangeParticipantEmail(participantId, newEmail.trim())
+      setEmailMessage(result.message)
+      await load()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
   const handleReset = async (participantId: string, name: string) => {
     if (!window.confirm(`Reset password for ${name}? Their current password stops working.`))
       return
@@ -104,7 +124,8 @@ export default function AdminParticipantsPage() {
       <p className="muted">
         Step 1: choose an .xlsx file (columns: name, email, student_staff_id, optional
         reference_id, university_name, technical_skills, preferred_role) to preview. Nothing is
-        written until you confirm. Initial password = student/staff ID.
+        written until you confirm. On confirm each participant receives an invite email and
+        sets their own password from its link — no credentials to hand out.
       </p>
       <input type="file" accept=".xlsx" onChange={(e) => void handleFile(e)} disabled={busy} />
 
@@ -149,14 +170,18 @@ export default function AdminParticipantsPage() {
             </tbody>
           </table>
           <button onClick={() => void handleConfirm()} disabled={busy || preview.ok_count === 0}>
-            Confirm import ({preview.ok_count} account{preview.ok_count === 1 ? '' : 's'})
+            Confirm & send invites ({preview.ok_count} account{preview.ok_count === 1 ? '' : 's'})
           </button>
         </>
       )}
 
       {confirmResult && (
         <div className="success-banner">
-          Created {confirmResult.created} account(s), skipped {confirmResult.skipped}.
+          Invited {confirmResult.created} participant(s), skipped {confirmResult.skipped}
+          {confirmResult.invite_failed > 0 && (
+            <> — {confirmResult.invite_failed} invite email(s) failed to send (no account created)</>
+          )}
+          .
           {confirmResult.skipped_rows.length > 0 && (
             <ul>
               {confirmResult.skipped_rows.map((row) => (
@@ -168,6 +193,8 @@ export default function AdminParticipantsPage() {
           )}
         </div>
       )}
+
+      {emailMessage && <div className="success-banner">{emailMessage}</div>}
 
       {resetInfo && (
         <div className="success-banner">
@@ -198,7 +225,7 @@ export default function AdminParticipantsPage() {
             <th>University</th>
             <th>Technical Skills</th>
             <th>Preferred Role</th>
-            <th>First login pending</th>
+            <th>Invite status</th>
             <th>Created</th>
             <th></th>
           </tr>
@@ -212,9 +239,32 @@ export default function AdminParticipantsPage() {
               <td>{participant.university_name ?? '—'}</td>
               <td>{participant.technical_skills ?? '—'}</td>
               <td>{participant.preferred_role ?? '—'}</td>
-              <td>{participant.first_login ? 'yes' : 'no'}</td>
+              <td>
+                <span
+                  className={`badge ${
+                    participant.invite_status === 'active'
+                      ? 'status-open'
+                      : participant.invite_status === 'failed'
+                        ? 'locked'
+                        : ''
+                  }`}
+                >
+                  {participant.invite_status ?? 'unknown'}
+                </span>
+              </td>
               <td>{formatDateTime(participant.created_at)}</td>
               <td>
+                <button
+                  onClick={() =>
+                    void handleEditEmail(
+                      participant.id,
+                      participant.username ?? participant.name,
+                      participant.email,
+                    )
+                  }
+                >
+                  Edit email
+                </button>{' '}
                 <button
                   onClick={() =>
                     void handleReset(participant.id, participant.username ?? participant.name)

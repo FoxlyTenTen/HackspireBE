@@ -7,6 +7,8 @@ const STORAGE_KEY = 'hackspire_auth'
 
 export interface StoredAuth {
   token: string
+  /** Supabase refresh token — exchanged via POST /auth/refresh when the access token expires. */
+  refreshToken: string
   role: Role
   firstLogin: boolean
   userId: string

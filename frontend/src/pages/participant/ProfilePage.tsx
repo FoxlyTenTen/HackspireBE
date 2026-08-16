@@ -58,7 +58,8 @@ export default function ProfilePage() {
       <p>
         <strong>Name:</strong> {profile.name}
         <br />
-        <strong>Email:</strong> {profile.email}
+        <strong>Email:</strong> {profile.email}{' '}
+        <span className="muted">(contact an admin to correct this)</span>
         <br />
         <strong>Student/Staff ID:</strong> {profile.student_staff_id}
         {profile.reference_id && (

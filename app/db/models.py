@@ -12,7 +12,8 @@ def utcnow() -> datetime:
 
 
 class Profile(Base):
-    """Extends auth.users in Supabase; hashed_password stands in for it locally."""
+    """Extends auth.users in Supabase — id matches auth.users.id for accounts
+    created through the invite flow; auth itself is handled by Supabase Auth."""
 
     __tablename__ = "profiles"
 
@@ -21,10 +22,13 @@ class Profile(Base):
     email: Mapped[str] = mapped_column(Text, unique=True, index=True)
     student_staff_id: Mapped[str] = mapped_column(Text, unique=True, index=True)
     role: Mapped[str] = mapped_column(Text, default="participant")  # participant | admin
+    # first_login: only set by admin password resets now (forces a change on
+    # next login); obsolete for invited accounts.
     first_login: Mapped[bool] = mapped_column(Boolean, default=True)
-    hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # invited (email sent, not yet accepted) | active (password set / logged in)
+    # | failed (reserved for SMTP bounce webhooks — never set by the app yet)
+    invite_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     username: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
-    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     reference_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     university_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     technical_skills: Mapped[str | None] = mapped_column(Text, nullable=True)

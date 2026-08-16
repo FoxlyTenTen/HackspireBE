@@ -17,9 +17,11 @@ router = APIRouter(tags=["Participants"])
     response_model=list[ParticipantListItem],
     summary="Searchable participant list",
     description=(
-        "All registered participants with their team status (`no_team` or `in_team`) "
-        "so leaders can find people to recruit. Filter with the `search` query "
-        "parameter (matches name, username, or student/staff ID)."
+        "Participants who have activated their account (`invite_status = active`), "
+        "with their team status (`no_team` or `in_team`) so leaders can find people "
+        "to recruit. Accounts still sitting on an unopened invite are excluded — "
+        "recruiting someone who can't log in yet isn't useful. Filter with the "
+        "`search` query parameter (matches name, username, or student/staff ID)."
     ),
     responses=error_responses(401, 403),
 )
@@ -30,7 +32,7 @@ async def list_participants(
 ) -> list[ParticipantListItem]:
     stmt = (
         select(Profile)
-        .where(Profile.role == "participant")
+        .where(Profile.role == "participant", Profile.invite_status == "active")
         .options(
             selectinload(Profile.membership).selectinload(TeamMember.team)
         )

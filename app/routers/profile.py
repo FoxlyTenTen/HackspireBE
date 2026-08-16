@@ -45,3 +45,9 @@ async def update_profile(
         user.preferred_role = body.preferred_role
     await db.commit()
     return user
+
+
+# No self-service email change: participants who need their email corrected
+# go through an admin (POST /admin/participants/{id}/change-email), which
+# updates both Supabase Auth and this profile row in one step, no
+# confirmation email required.

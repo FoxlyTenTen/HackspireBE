@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback((response: LoginResponse): StoredAuth => {
     const next: StoredAuth = {
       token: response.jwt,
+      refreshToken: response.refresh_token,
       role: response.role,
       firstLogin: response.first_login,
       userId: decodeUserId(response.jwt),

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.core.security import decode_access_token
+from app.core.security import decode_supabase_token
 from app.db.models import Profile, Team, TeamMember
 from app.db.session import get_db
 
@@ -18,19 +18,31 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> Profile:
-    """Participant guard: any logged-in user with a valid bearer token."""
+    """Participant guard: any logged-in user with a valid Supabase access token."""
     if credentials is None:
         raise ApiError(401, "Missing bearer token")
-    payload = decode_access_token(credentials.credentials)
+    payload = await decode_supabase_token(credentials.credentials)
     if payload is None or "sub" not in payload:
         raise ApiError(401, "Invalid or expired token")
     try:
         profile_id = uuid.UUID(payload["sub"])
     except ValueError:
         raise ApiError(401, "Invalid or expired token")
+    token_email = payload.get("email") or None
     profile = await db.get(Profile, profile_id)
+    if profile is None and token_email:
+        # Legacy accounts created before the Supabase Auth migration have a
+        # profile id that doesn't match auth.users.id — link them by email.
+        profile = await db.scalar(select(Profile).where(Profile.email == token_email))
     if profile is None:
         raise ApiError(401, "Account no longer exists")
+    if token_email and profile.email != token_email:
+        # Supabase confirmed an email change (the token carries the new
+        # address) — sync our mirror column, unless another row owns it.
+        taken = await db.scalar(select(Profile).where(Profile.email == token_email))
+        if taken is None:
+            profile.email = token_email
+            await db.commit()
     if profile.first_login and not request.url.path.endswith("/auth/change-password"):
         raise ApiError(403, "Password change required before using the API")
     return profile

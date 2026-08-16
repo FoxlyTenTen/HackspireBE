@@ -79,8 +79,15 @@ class ImportConfirmRequest(BaseModel):
 
 
 class ImportConfirmResponse(BaseModel):
-    created: int
+    created: int = Field(description="Accounts created — each was sent an invite email")
     skipped: int
+    invite_failed: int = Field(
+        default=0,
+        description=(
+            "Rows whose Supabase invite call failed — included in skipped_rows "
+            "with the reason; no account was created for them"
+        ),
+    )
     skipped_rows: list[ImportRow] = Field(
         default_factory=list, description="Rows skipped on confirm with reasons"
     )
@@ -93,10 +100,22 @@ class AdminParticipantsResponse(BaseModel):
     participants: list[ProfileRead]
 
 
+class AdminChangeEmailRequest(BaseModel):
+    new_email: str = Field(
+        min_length=3,
+        examples=["corrected.address@student.edu.my"],
+        description="Replaces the participant's email immediately (no confirmation link)",
+    )
+
+
 class ResetPasswordResponse(BaseModel):
     participant_id: uuid.UUID
     temporary_password: str = Field(
-        description="Give this to the participant; first_login is set so they must change it"
+        description=(
+            "Give this to the participant. Set via Supabase Auth's admin API with "
+            "the email force-confirmed, so it works even when their inbox doesn't; "
+            "first_login forces a change on next login."
+        )
     )
 
 

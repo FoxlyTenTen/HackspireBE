@@ -7,6 +7,7 @@ _ERROR_DESCRIPTIONS = {
     404: "Resource not found",
     409: "Conflict with current state (e.g. team locked or full, deadline passed)",
     422: "Request body failed validation",
+    503: "Supabase Auth is not configured or unreachable",
 }
 
 

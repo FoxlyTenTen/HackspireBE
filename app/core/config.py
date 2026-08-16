@@ -10,9 +10,17 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite+aiosqlite:///./hackspire.db"
 
-    jwt_secret: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expires_min: int = 60 * 24
+    # Supabase Auth — the only authentication mechanism. All values come from
+    # the Supabase dashboard (Settings → API). jwt_secret is only needed for
+    # legacy HS256 projects; newer projects use asymmetric keys and are
+    # verified via the project's JWKS endpoint automatically.
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
+
+    # Where Supabase's invite / password-reset / email-change links land.
+    frontend_url: str = "http://localhost:5173"
 
     admin_email: str = "admin@hackspire.dev"
     admin_password: str = "admin123"

@@ -6,8 +6,14 @@ export type MaterialCategory = 'general' | 'submission_template'
 
 export interface LoginResponse {
   jwt: string
+  refresh_token: string
   first_login: boolean
   role: Role
+}
+
+export interface RefreshResponse {
+  jwt: string
+  refresh_token: string
 }
 
 export interface ParticipantListItem {
@@ -211,6 +217,7 @@ export interface ImportPreviewResponse {
 export interface ImportConfirmResponse {
   created: number
   skipped: number
+  invite_failed: number
   skipped_rows: ImportRow[]
 }
 
@@ -222,11 +229,11 @@ export interface ProfileRead {
   role: Role
   first_login: boolean
   username: string | null
-  email_verified: boolean
   reference_id: string | null
   university_name: string | null
   technical_skills: string | null
   preferred_role: string | null
+  invite_status: 'invited' | 'active' | 'failed' | null
   created_at: string
 }
 

@@ -4,6 +4,7 @@ import AdminRoute from './components/AdminRoute'
 import ParticipantLayout from './components/ParticipantLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import AcceptInvitePage from './pages/AcceptInvitePage'
 import AdminAuditLogPage from './pages/admin/AuditLogPage'
 import AdminLoginPage from './pages/admin/LoginPage'
 import AdminParticipantsPage from './pages/admin/ParticipantsPage'
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/administrator" element={<AdminLoginPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
           {/* Participant tree */}
           <Route element={<ProtectedRoute />}>

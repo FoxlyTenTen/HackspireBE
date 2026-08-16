@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { login as apiLogin } from '../api/endpoints'
+import { forgotPassword, login as apiLogin } from '../api/endpoints'
 import type { Role } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import ErrorBanner from './ErrorBanner'
@@ -22,6 +22,24 @@ export default function LoginForm({ expectedRole, title, onSuccess }: Props) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null)
+
+  const handleForgot = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setForgotMessage(null)
+    setBusy(true)
+    try {
+      const res = await forgotPassword(forgotEmail)
+      setForgotMessage(res.message)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -74,6 +92,33 @@ export default function LoginForm({ expectedRole, title, onSuccess }: Props) {
           {busy ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+      {expectedRole === 'participant' && (
+        <>
+          {!showForgot ? (
+            <p>
+              <button className="link-button" onClick={() => setShowForgot(true)}>
+                Forgot password?
+              </button>
+            </p>
+          ) : (
+            <form onSubmit={handleForgot}>
+              <label>
+                Account email
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                />
+              </label>
+              <button type="submit" disabled={busy}>
+                {busy ? 'Sending…' : 'Send reset link'}
+              </button>
+              {forgotMessage && <p className="muted">{forgotMessage}</p>}
+            </form>
+          )}
+        </>
+      )}
     </div>
   )
 }

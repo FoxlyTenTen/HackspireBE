@@ -1,11 +1,11 @@
 import io
+import uuid
 
 from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.core.security import hash_password_async
 from app.db.models import Profile
 from app.schemas.admin import (
     ImportConfirmRowIn,
@@ -13,6 +13,7 @@ from app.schemas.admin import (
     ImportPreviewResponse,
     ImportRow,
 )
+from app.services import supabase_auth
 from app.services.audit import log_admin_action
 
 REQUIRED_COLUMNS = ("name", "email", "student_staff_id")
@@ -138,10 +139,13 @@ async def preview(db: AsyncSession, content: bytes) -> ImportPreviewResponse:
 async def confirm(
     db: AsyncSession, admin: Profile, rows: list[ImportConfirmRowIn]
 ) -> ImportConfirmResponse:
-    """Step 2: re-validate and bulk-create accounts + profiles for clean rows.
+    """Step 2: re-validate clean rows, then invite each via Supabase Auth.
 
-    Initial password is the participant's student_staff_id; first_login forces
-    an immediate change.
+    invite_user_by_email sends a real invite email; the participant sets their
+    own password from its link, which replaces the old dummy-password +
+    forced-first-login flow. Rows whose invite call fails are NOT created (a
+    profile without an auth user could never log in) — they come back in
+    `skipped_rows` with the failure reason so the admin can retry them.
     """
     if not rows:
         raise ApiError(400, "No rows provided to import")
@@ -162,13 +166,26 @@ async def confirm(
     validated = _validate_rows(raw, db_emails, db_ids)
 
     created = 0
+    invite_failed = 0
     skipped_rows: list[ImportRow] = []
     for row in validated:
         if row.status != "ok":
             skipped_rows.append(row)
             continue
+        try:
+            auth_user = await supabase_auth.invite_user_by_email(
+                row.email,
+                data={"name": row.name, "student_staff_id": row.student_staff_id},
+            )
+        except ApiError as exc:
+            invite_failed += 1
+            row.status = "flagged"
+            row.issues = [f"invite email failed: {exc.message}"]
+            skipped_rows.append(row)
+            continue
         db.add(
             Profile(
+                id=uuid.UUID(auth_user["id"]),  # profiles.id matches auth.users.id
                 name=row.name,
                 email=row.email,
                 student_staff_id=row.student_staff_id,
@@ -177,8 +194,8 @@ async def confirm(
                 technical_skills=row.technical_skills,
                 preferred_role=row.preferred_role,
                 role="participant",
-                first_login=True,
-                hashed_password=await hash_password_async(row.student_staff_id),
+                first_login=False,  # they set their own password via the invite link
+                invite_status="invited",
             )
         )
         created += 1
@@ -187,9 +204,15 @@ async def confirm(
         admin.id,
         "participant_imported",
         target_table="profiles",
-        details=f"{created} created, {len(skipped_rows)} skipped",
+        details=(
+            f"{created} invited, {len(skipped_rows)} skipped"
+            f" ({invite_failed} invite failures)"
+        ),
     )
     await db.commit()
     return ImportConfirmResponse(
-        created=created, skipped=len(skipped_rows), skipped_rows=skipped_rows
+        created=created,
+        skipped=len(skipped_rows),
+        invite_failed=invite_failed,
+        skipped_rows=skipped_rows,
     )

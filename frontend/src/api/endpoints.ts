@@ -1,3 +1,4 @@
+import axios from 'axios'
 import client from './client'
 import type {
   AdminParticipantsResponse,
@@ -38,7 +39,41 @@ export const login = (username: string, password: string) =>
 export const changePassword = (new_password: string) =>
   client.post('/auth/change-password', { new_password }).then((r) => r.data)
 
+/** Self-service reset — Supabase sends its built-in reset email. */
+export const forgotPassword = (email: string) =>
+  client.post<{ message: string }>('/auth/forgot-password', { email }).then((r) => r.data)
+
+/** Exchanges a PKCE-flow email link's `token_hash` for a real session. */
+export const verifyOtp = (tokenHash: string, type: string) =>
+  axios
+    .post<{ jwt: string; refresh_token: string; type: string }>(
+      `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'}/auth/verify-otp`,
+      { token_hash: tokenHash, type },
+    )
+    .then((r) => r.data)
+    .catch((err) => {
+      throw new Error(err.response?.data?.error ?? err.message ?? 'Request failed')
+    })
+
+/**
+ * Set a password using a token from an invite / recovery link's URL fragment
+ * (the user has no stored session yet, so the token is passed explicitly).
+ */
+export const setPasswordWithToken = (accessToken: string, new_password: string) =>
+  axios
+    .post(
+      `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'}/auth/change-password`,
+      { new_password },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    .then((r) => r.data)
+    .catch((err) => {
+      throw new Error(err.response?.data?.error ?? err.message ?? 'Request failed')
+    })
+
 // ---------- Profile ----------
+// No self-service email change — participants ask an admin to correct it
+// (adminChangeParticipantEmail below), which updates Supabase Auth directly.
 export const getProfile = () => client.get<ProfileRead>('/profile').then((r) => r.data)
 
 export const updateProfile = (body: ProfileUpdate) =>
@@ -173,6 +208,12 @@ export const adminParticipantsCsv = () =>
 export const adminResetPassword = (participantId: string) =>
   client
     .post<ResetPasswordResponse>(`/admin/participants/${participantId}/reset-password`)
+    .then((r) => r.data)
+
+/** Correct a wrongly-imported email; re-sends the set-password link if the account was never activated. */
+export const adminChangeParticipantEmail = (participantId: string, new_email: string) =>
+  client
+    .post<{ message: string }>(`/admin/participants/${participantId}/change-email`, { new_email })
     .then((r) => r.data)
 
 // ---------- Admin — Teams ----------
