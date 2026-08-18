@@ -72,7 +72,7 @@ export interface JoinRequestRead {
 
 export interface NotificationRead {
   id: string
-  type: 'join_request' | 'join_response' | 'announcement' | 'team_update'
+  type: 'join_request' | 'join_response' | 'announcement' | 'team_update' | 'round2_open'
   reference_id: string | null
   message: string
   read: boolean
