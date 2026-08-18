@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -65,8 +65,8 @@ class Team(Base):
     join_requests: Mapped[list["JoinRequest"]] = relationship(
         back_populates="team", cascade="all, delete-orphan"
     )
-    submission: Mapped["Submission | None"] = relationship(
-        back_populates="team", uselist=False, cascade="all, delete-orphan"
+    submissions: Mapped[list["Submission"]] = relationship(
+        back_populates="team", cascade="all, delete-orphan"
     )
 
 
@@ -110,13 +110,19 @@ class JoinRequest(Base):
 
 class Submission(Base):
     __tablename__ = "submissions"
+    __table_args__ = (
+        UniqueConstraint("team_id", "round", name="submissions_team_id_round_key"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     team_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("teams.id", ondelete="CASCADE"), unique=True
+        Uuid, ForeignKey("teams.id", ondelete="CASCADE")
     )
+    # 1 = qualifying round (all approved teams) | 2 = finalist round (published finalists only)
+    round: Mapped[int] = mapped_column(Integer, default=1)
     github_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    gdrive_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    infographic_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pitch_deck_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     submitted_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("profiles.id"), nullable=True
     )
@@ -125,7 +131,7 @@ class Submission(Base):
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
-    team: Mapped[Team] = relationship(back_populates="submission")
+    team: Mapped[Team] = relationship(back_populates="submissions")
 
 
 class EventSettings(Base):
@@ -138,6 +144,9 @@ class EventSettings(Base):
         DateTime(timezone=True), nullable=True
     )
     submission_deadline_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    round2_submission_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     updated_at: Mapped[datetime] = mapped_column(
@@ -238,7 +247,7 @@ class Notification(Base):
     participant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("profiles.id"), index=True
     )
-    # join_request | join_response | announcement | team_update
+    # join_request | join_response | announcement | team_update | round2_open
     type: Mapped[str] = mapped_column(Text)
     reference_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     message: Mapped[str] = mapped_column(Text)

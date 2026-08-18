@@ -160,18 +160,28 @@ export const markNotificationRead = (notificationId: string) =>
     .then((r) => r.data)
 
 // ---------- Submission ----------
-export const getSubmission = (teamId: string) =>
-  client.get<SubmissionRead>(`/teams/${teamId}/submission`).then((r) => r.data)
+export const getSubmission = (teamId: string, round: 1 | 2) =>
+  client.get<SubmissionRead>(`/teams/${teamId}/submission/${round}`).then((r) => r.data)
 
 export const createSubmission = (
   teamId: string,
-  body: { github_url?: string | null; gdrive_url?: string | null },
-) => client.post<SubmissionRead>(`/teams/${teamId}/submission`, body).then((r) => r.data)
+  round: 1 | 2,
+  body: {
+    github_url?: string | null
+    infographic_url?: string | null
+    pitch_deck_url?: string | null
+  },
+) => client.post<SubmissionRead>(`/teams/${teamId}/submission/${round}`, body).then((r) => r.data)
 
 export const updateSubmission = (
   teamId: string,
-  body: { github_url?: string | null; gdrive_url?: string | null },
-) => client.patch<SubmissionRead>(`/teams/${teamId}/submission`, body).then((r) => r.data)
+  round: 1 | 2,
+  body: {
+    github_url?: string | null
+    infographic_url?: string | null
+    pitch_deck_url?: string | null
+  },
+) => client.patch<SubmissionRead>(`/teams/${teamId}/submission/${round}`, body).then((r) => r.data)
 
 // ---------- Admin — Participants ----------
 export const adminImportPreview = (file: File) => {
@@ -304,15 +314,20 @@ export const adminGetAuditLog = (limit = 100, offset = 0) =>
     .then((r) => r.data)
 
 // ---------- Admin — Submissions ----------
-export const adminGetSubmissions = () =>
-  client.get<AdminSubmissionRow[]>('/admin/submissions').then((r) => r.data)
-
-export const adminSubmissionsCsv = () =>
+export const adminGetSubmissions = (round?: 1 | 2) =>
   client
-    .get<Blob>('/admin/submissions', { params: { format: 'csv' }, responseType: 'blob' })
+    .get<AdminSubmissionRow[]>('/admin/submissions', { params: round ? { round } : {} })
     .then((r) => r.data)
 
-export const adminSetDeadline = (submission_deadline_at: string) =>
+export const adminSubmissionsCsv = (round?: 1 | 2) =>
   client
-    .patch<EventSettingsRead>('/admin/submissions/deadline', { submission_deadline_at })
+    .get<Blob>('/admin/submissions', {
+      params: { format: 'csv', ...(round ? { round } : {}) },
+      responseType: 'blob',
+    })
+    .then((r) => r.data)
+
+export const adminSetDeadline = (round: 1 | 2, submission_deadline_at: string) =>
+  client
+    .patch<EventSettingsRead>('/admin/submissions/deadline', { round, submission_deadline_at })
     .then((r) => r.data)

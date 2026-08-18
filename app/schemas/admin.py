@@ -164,13 +164,16 @@ class AdminSubmissionRow(BaseModel):
     team_id: uuid.UUID
     team_reference_id: str | None
     team_name: str
+    round: int
     github_url: str | None
-    gdrive_url: str | None
+    infographic_url: str | None
+    pitch_deck_url: str | None
     submitted_at: datetime
     updated_at: datetime
 
 
 class DeadlineUpdate(BaseModel):
+    round: Literal[1, 2] = Field(default=1, description="Which round's deadline to set")
     submission_deadline_at: datetime = Field(
         examples=["2026-09-13T12:00:00+08:00"]
     )
@@ -179,6 +182,7 @@ class DeadlineUpdate(BaseModel):
 class EventSettingsRead(BaseModel):
     countdown_at: datetime | None
     submission_deadline_at: datetime | None
+    round2_submission_deadline_at: datetime | None
     updated_at: datetime
 
 

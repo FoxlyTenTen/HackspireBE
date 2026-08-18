@@ -82,8 +82,10 @@ export interface NotificationRead {
 export interface SubmissionRead {
   id: string
   team_id: string
+  round: 1 | 2
   github_url: string | null
-  gdrive_url: string | null
+  infographic_url: string | null
+  pitch_deck_url: string | null
   submitted_by: string | null
   submitted_at: string
   updated_at: string
@@ -154,6 +156,7 @@ export interface EventInfo {
   venue: string
   countdown_at: string | null
   submission_deadline_at: string | null
+  round2_submission_deadline_at: string | null
   timeline: TimelineItem[]
   sponsors: { name: string; tier: string }[]
   prize_pool: { total: string; breakdown: { placement: string; prize: string }[] }
@@ -284,8 +287,10 @@ export interface AdminSubmissionRow {
   team_id: string
   team_reference_id: string | null
   team_name: string
+  round: 1 | 2
   github_url: string | null
-  gdrive_url: string | null
+  infographic_url: string | null
+  pitch_deck_url: string | null
   submitted_at: string
   updated_at: string
 }
@@ -293,6 +298,7 @@ export interface AdminSubmissionRow {
 export interface EventSettingsRead {
   countdown_at: string | null
   submission_deadline_at: string | null
+  round2_submission_deadline_at: string | null
   updated_at: string
 }
 

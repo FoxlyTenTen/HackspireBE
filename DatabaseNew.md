@@ -57,14 +57,16 @@ Unique constraint: one pending request per participant_id at a time. 🆕 Fronte
 | responded_at | timestamptz | nullable |
 
 ## submissions
-🆕 Exactly 2 link fields — GitHub and a single Drive link (the Drive link contains both the infographic and pitch deck internally). Open to any team member, not leader-only.
+🆕 3 link fields — GitHub, infographic, and pitch deck are now separate links. Open to any team member, not leader-only. 🆕 Two rounds: round 1 (qualifying, all approved teams) and round 2 (finalist judging, published finalists only) — a team may have up to one row per round.
 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
-| team_id | uuid | FK → teams.id, unique, ON DELETE CASCADE |
+| team_id | uuid | FK → teams.id, ON DELETE CASCADE — unique together with `round` |
+| **round** | smallint | 🆕 `1` (qualifying) or `2` (finalist) |
 | **github_url** | text | 🆕 nullable |
-| **gdrive_url** | text | 🆕 nullable — single Drive link containing both required materials (infographic + pitch deck) |
+| **infographic_url** | text | 🆕 nullable — link to the team's infographic |
+| **pitch_deck_url** | text | 🆕 nullable — link to the team's pitch deck |
 | **submitted_by** | uuid | 🆕 FK → profiles.id — tracks which team member last submitted/edited |
 | submitted_at | timestamptz | |
 | updated_at | timestamptz | set whenever the submission is edited |
@@ -76,7 +78,8 @@ Single-row config table. Contact info is hardcoded in the frontend, not stored h
 |---|---|---|
 | id | int | PK, always 1 |
 | countdown_at | timestamptz | event start |
-| submission_deadline_at | timestamptz | |
+| submission_deadline_at | timestamptz | round 1 (qualifying) deadline |
+| **round2_submission_deadline_at** | timestamptz | 🆕 round 2 (finalist) deadline |
 | updated_at | timestamptz | |
 
 ## timeline_items
@@ -162,7 +165,7 @@ team_update fires for every existing team member (not the new joiner) whenever s
 |---|---|---|
 | id | uuid | PK |
 | participant_id | uuid | FK → profiles.id — recipient |
-| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` |
+| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` \| `round2_open` |
 | reference_id | uuid | nullable — points to join_requests.id, announcements.id, or teams.id |
 | message | text | |
 | read | boolean | default false |
@@ -172,7 +175,7 @@ team_update fires for every existing team member (not the new joiner) whenever s
 - profiles 1—N teams (as leader)
 - teams 1—N team_members N—1 profiles — cascades on team delete
 - teams 1—N join_requests N—1 profiles — cascades on team delete
-- teams 1—1 submissions — cascades on team delete
+- teams 1—N submissions (one per round, max 2) — cascades on team delete
 - profiles 1—N submissions (as submitted_by)
 - teams 1—1 finalists (optional)
 - teams 1—1 winners (optional)

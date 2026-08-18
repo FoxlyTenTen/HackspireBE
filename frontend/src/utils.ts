@@ -1,13 +1,13 @@
 // Mirrors the backend's submission URL validation (app/services/submissions.py)
 const GITHUB_RE = /^https:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+(\/.*)?$/
-const DRIVE_RE = /^https:\/\/(drive|docs)\.google\.com\/\S+$/
+const URL_RE = /^https:\/\/\S+$/
 
 export function isValidGithubUrl(url: string): boolean {
   return GITHUB_RE.test(url)
 }
 
-export function isValidGdriveUrl(url: string): boolean {
-  return DRIVE_RE.test(url)
+export function isValidLinkUrl(url: string): boolean {
+  return URL_RE.test(url)
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

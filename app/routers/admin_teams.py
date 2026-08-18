@@ -42,10 +42,10 @@ async def _admin_read(db: AsyncSession, team_id: uuid.UUID) -> AdminTeamRead:
         .options(
             selectinload(Team.members),
             selectinload(Team.leader),
-            selectinload(Team.submission),
+            selectinload(Team.submissions),
         )
     )
-    return _to_admin_read(team, team.submission is not None)
+    return _to_admin_read(team, len(team.submissions) > 0)
 
 
 @router.get(
@@ -64,12 +64,12 @@ async def list_all_teams(
             .options(
                 selectinload(Team.members),
                 selectinload(Team.leader),
-                selectinload(Team.submission),
+                selectinload(Team.submissions),
             )
             .order_by(Team.created_at)
         )
     ).all()
-    return [_to_admin_read(t, t.submission is not None) for t in teams]
+    return [_to_admin_read(t, len(t.submissions) > 0) for t in teams]
 
 
 @router.post(

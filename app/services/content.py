@@ -14,6 +14,7 @@ from app.db.models import (
     Material,
     Profile,
     Team,
+    TeamMember,
     TimelineItem,
     Winner,
 )
@@ -41,6 +42,7 @@ async def event_info(db: AsyncSession) -> EventInfoResponse:
         venue=EVENT_INFO["venue"],
         countdown_at=settings_row.countdown_at,
         submission_deadline_at=settings_row.submission_deadline_at,
+        round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
         timeline=timeline,
         sponsors=EVENT_INFO["sponsors"],
         prize_pool=EVENT_INFO["prize_pool"],
@@ -102,12 +104,17 @@ async def set_countdown(db: AsyncSession, admin: Profile, countdown_at: datetime
     return settings_row
 
 
-async def set_submission_deadline(db: AsyncSession, admin: Profile, deadline_at: datetime):
+async def set_submission_deadline(
+    db: AsyncSession, admin: Profile, round: int, deadline_at: datetime
+):
     settings_row = await get_event_settings(db)
-    settings_row.submission_deadline_at = deadline_at
+    if round == 1:
+        settings_row.submission_deadline_at = deadline_at
+    else:
+        settings_row.round2_submission_deadline_at = deadline_at
     settings_row.updated_at = datetime.now(timezone.utc)
     log_admin_action(
-        db, admin.id, "submission_deadline_updated", target_table="event_settings"
+        db, admin.id, f"round{round}_submission_deadline_updated", target_table="event_settings"
     )
     await db.commit()
     return settings_row
@@ -159,6 +166,9 @@ async def put_finalists(
     db: AsyncSession, admin: Profile, data: FinalistsPut
 ) -> list[FinalistRead]:
     await _ensure_teams_exist(db, data.team_ids)
+    was_published = bool(
+        await db.scalar(select(Finalist.id).where(Finalist.published.is_(True)).limit(1))
+    )
     await db.execute(sa_delete(Finalist))
     published_at = datetime.now(timezone.utc) if data.published else None
     db.add_all(
@@ -172,6 +182,18 @@ async def put_finalists(
         target_table="finalists",
         details=f"{len(data.team_ids)} team(s)",
     )
+    if data.published and not was_published:
+        recipient_ids = (
+            await db.scalars(
+                select(TeamMember.participant_id).where(TeamMember.team_id.in_(data.team_ids))
+            )
+        ).all()
+        create_notifications(
+            db,
+            recipient_ids,
+            "round2_open",
+            "Your team has been selected as a finalist — round 2 submission is now open!",
+        )
     await db.commit()
     return await list_finalists(db, published_only=False)
 

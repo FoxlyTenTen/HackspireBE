@@ -18,8 +18,9 @@ import type {
   WinnerRead,
 } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
+import { AnnouncementsIcon } from '../../components/icons'
 import { usePolling } from '../../hooks/usePolling'
-import { formatDateTime } from '../../utils'
+import { formatDateTime, resolveFileUrl } from '../../utils'
 
 function Countdown({ target }: { target: string }) {
   const [now, setNow] = useState(() => Date.now())
@@ -86,8 +87,43 @@ export default function HomePage() {
   if (error) return <ErrorBanner message={error} />
   if (!info) return <p>Loading…</p>
 
+  const latestAnnouncements = announcements.slice(0, 3)
+
   return (
-    <div className="grid-2">
+    <div>
+      {latestAnnouncements.length > 0 && (
+        <section className="dash-announcements">
+          <div className="dash-announcements-header">
+            <h2>
+              <AnnouncementsIcon /> Announcements
+            </h2>
+            <Link to="/announcements" className="view-all-link">
+              View all
+            </Link>
+          </div>
+          <div className="dash-announcements-scroll">
+            {latestAnnouncements.map((a) => (
+              <article key={a.id} className="dash-announcement-card">
+                <header className="dash-announcement-card-header">
+                  <h3>{a.title}</h3>
+                  <span className="muted">{formatDateTime(a.posted_at)}</span>
+                </header>
+                {a.image_url && (
+                  <img
+                    src={resolveFileUrl(a.image_url) ?? ''}
+                    alt={a.title}
+                    className="dash-announcement-image"
+                  />
+                )}
+                <p>{a.body}</p>
+                <div className="muted">Posted by {a.posted_by}</div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="grid-2">
       <section>
         <h1>{info.name}</h1>
         <p className="tagline">{info.tagline}</p>
@@ -196,20 +232,6 @@ export default function HomePage() {
         </ul>
 
         <h2>
-          Announcements <Link to="/announcements">(all)</Link>
-        </h2>
-        {announcements.length === 0 && <p>Nothing yet.</p>}
-        <ul className="announcements">
-          {announcements.slice(0, 3).map((a) => (
-            <li key={a.id} className="announcement-card">
-              <strong>{a.title}</strong>
-              <p>{a.body}</p>
-              <div className="muted">{formatDateTime(a.posted_at)}</div>
-            </li>
-          ))}
-        </ul>
-
-        <h2>
           Notifications <Link to="/notifications">(all)</Link>
         </h2>
         {notifications.length === 0 && <p>Nothing yet.</p>}
@@ -222,6 +244,7 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+      </div>
     </div>
   )
 }

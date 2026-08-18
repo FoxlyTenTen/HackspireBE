@@ -60,6 +60,7 @@ class EventInfoResponse(BaseModel):
     venue: str
     countdown_at: datetime | None
     submission_deadline_at: datetime | None
+    round2_submission_deadline_at: datetime | None
     timeline: list[TimelineItemRead]
     sponsors: list[dict]
     prize_pool: dict

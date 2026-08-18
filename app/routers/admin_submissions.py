@@ -22,29 +22,36 @@ router = APIRouter(prefix="/admin/submissions", tags=["Admin — Submissions"])
 @router.get(
     "",
     response_model=list[AdminSubmissionRow],
-    summary="Export all team submission links for judges",
-    description="Set `format=csv` to download as CSV instead of JSON.",
+    summary="Export team submission links for judges",
+    description=(
+        "Set `format=csv` to download as CSV instead of JSON. Omit `round` to get both "
+        "rounds combined; pass `round=1` or `round=2` to filter to one round."
+    ),
     responses=error_responses(401, 403),
 )
 async def list_submissions(
     format: Literal["json", "csv"] = Query(default="json"),
+    round: int | None = Query(default=None, ge=1, le=2),
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    submissions = (
-        await db.scalars(
-            select(Submission)
-            .options(selectinload(Submission.team))
-            .order_by(Submission.submitted_at)
-        )
-    ).all()
+    stmt = (
+        select(Submission)
+        .options(selectinload(Submission.team))
+        .order_by(Submission.round, Submission.submitted_at)
+    )
+    if round is not None:
+        stmt = stmt.where(Submission.round == round)
+    submissions = (await db.scalars(stmt)).all()
     rows = [
         AdminSubmissionRow(
             team_id=s.team_id,
             team_reference_id=s.team.reference_id,
             team_name=s.team.name,
+            round=s.round,
             github_url=s.github_url,
-            gdrive_url=s.gdrive_url,
+            infographic_url=s.infographic_url,
+            pitch_deck_url=s.pitch_deck_url,
             submitted_at=s.submitted_at,
             updated_at=s.updated_at,
         )
@@ -55,10 +62,12 @@ async def list_submissions(
         writer = csv.writer(buffer)
         writer.writerow(
             [
+                "round",
                 "team_reference_id",
                 "team_name",
                 "github_url",
-                "gdrive_url",
+                "infographic_url",
+                "pitch_deck_url",
                 "submitted_at",
                 "updated_at",
             ]
@@ -66,10 +75,12 @@ async def list_submissions(
         for r in rows:
             writer.writerow(
                 [
+                    r.round,
                     r.team_reference_id,
                     r.team_name,
                     r.github_url,
-                    r.gdrive_url,
+                    r.infographic_url,
+                    r.pitch_deck_url,
                     r.submitted_at,
                     r.updated_at,
                 ]
@@ -85,8 +96,8 @@ async def list_submissions(
 @router.patch(
     "/deadline",
     response_model=EventSettingsRead,
-    summary="Set or update the submission deadline",
-    description="After this moment, leaders can no longer create or edit submissions.",
+    summary="Set or update a round's submission deadline",
+    description="After this moment, leaders can no longer create or edit that round's submission.",
     responses=error_responses(401, 403, 422),
 )
 async def update_deadline(
@@ -94,9 +105,12 @@ async def update_deadline(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> EventSettingsRead:
-    row = await content_service.set_submission_deadline(db, admin, body.submission_deadline_at)
+    row = await content_service.set_submission_deadline(
+        db, admin, body.round, body.submission_deadline_at
+    )
     return EventSettingsRead(
         countdown_at=row.countdown_at,
         submission_deadline_at=row.submission_deadline_at,
+        round2_submission_deadline_at=row.round2_submission_deadline_at,
         updated_at=row.updated_at,
     )
