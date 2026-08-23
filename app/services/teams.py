@@ -202,15 +202,16 @@ async def leave_team(db: AsyncSession, team: Team, user: Profile) -> None:
     ensure_unlocked(team)
     if team.leader_id == user.id:
         raise ApiError(400, "The leader cannot leave — delete the team instead")
-    membership = await db.scalar(
-        select(TeamMember).where(
-            TeamMember.team_id == team.id, TeamMember.participant_id == user.id
-        )
-    )
+    # Single query for both "is this user a member" and "who else is on the
+    # team" instead of a membership lookup followed by a separate member_ids call.
+    members = (
+        await db.scalars(select(TeamMember).where(TeamMember.team_id == team.id))
+    ).all()
+    membership = next((m for m in members if m.participant_id == user.id), None)
     if membership is None:
         raise ApiError(403, "You are not a member of this team")
     await db.delete(membership)
-    remaining = [pid for pid in await member_ids(db, team.id) if pid != user.id]
+    remaining = [m.participant_id for m in members if m.participant_id != user.id]
     sync_full_status(team, len(remaining))
     create_notifications(
         db,

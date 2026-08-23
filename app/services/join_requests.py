@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -161,28 +161,39 @@ async def respond(
     request.responded_at = datetime.now(timezone.utc)
 
     if decision == "approve":
-        if await get_membership(db, request.participant_id) is not None:
+        # One query covers both "does this participant already belong to a
+        # team" and "who's already on this team" instead of two round trips.
+        related_memberships = (
+            await db.scalars(
+                select(TeamMember).where(
+                    or_(
+                        TeamMember.participant_id == request.participant_id,
+                        TeamMember.team_id == team.id,
+                    )
+                )
+            )
+        ).all()
+        if any(m.participant_id == request.participant_id for m in related_memberships):
             request.status = "rejected"
             await db.commit()
             raise ApiError(409, "Participant already joined another team")
-        existing_ids = await member_ids(db, team.id)
+        existing_ids = [m.participant_id for m in related_memberships if m.team_id == team.id]
         if len(existing_ids) >= team.capacity:
             raise ApiError(409, "Team is already full")
         request.status = "approved"
         db.add(TeamMember(team_id=team.id, participant_id=request.participant_id))
         sync_full_status(team, len(existing_ids) + 1)
-        # A participant can only have one pending request, but clean up defensively
-        others = await db.scalars(
-            select(JoinRequest).where(
+        # A participant can only have one pending request, but clean up
+        # defensively via a bulk UPDATE (no separate SELECT round trip).
+        await db.execute(
+            update(JoinRequest)
+            .where(
                 JoinRequest.participant_id == request.participant_id,
                 JoinRequest.status == "pending",
                 JoinRequest.id != request.id,
             )
+            .values(status="rejected", responded_at=datetime.now(timezone.utc))
         )
-        now = datetime.now(timezone.utc)
-        for other in others:
-            other.status = "rejected"
-            other.responded_at = now
         if request.initiated_by == "leader":
             create_notification(
                 db,

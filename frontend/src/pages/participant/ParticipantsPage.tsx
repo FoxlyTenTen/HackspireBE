@@ -1,32 +1,28 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getParticipants, inviteParticipant } from '../../api/endpoints'
+import { queryKeys } from '../../api/queryKeys'
 import type { ParticipantListItem } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
 import { useMyTeam } from '../../context/MyTeamContext'
 
 export default function ParticipantsPage() {
   const { team, isLeader } = useMyTeam()
-  const [participants, setParticipants] = useState<ParticipantListItem[]>([])
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [submittedSearch, setSubmittedSearch] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
-  const load = useCallback(
-    (query?: string) =>
-      getParticipants(query)
-        .then(setParticipants)
-        .catch((err: Error) => setError(err.message)),
-    [],
-  )
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const { data: participants = [], error: loadError } = useQuery({
+    queryKey: queryKeys.participants(submittedSearch),
+    queryFn: () => getParticipants(submittedSearch),
+  })
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
-    void load(search || undefined)
+    setSubmittedSearch(search || undefined)
   }
 
   // Leaders can invite unassigned participants (capacity permitting) — the
@@ -41,7 +37,7 @@ export default function ParticipantsPage() {
     try {
       await inviteParticipant(team.id, participant.id)
       setMessage(`Invite sent to ${participant.username ?? participant.name}.`)
-      await load(search || undefined)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.participants(submittedSearch) })
     } catch (err) {
       setError((err as Error).message)
     }
@@ -50,7 +46,7 @@ export default function ParticipantsPage() {
   return (
     <div>
       <h1>Participants</h1>
-      <ErrorBanner message={error} />
+      <ErrorBanner message={error ?? (loadError as Error | null)?.message ?? null} />
       {message && <div className="success-banner">{message}</div>}
 
       <form className="inline-form" onSubmit={handleSearch}>

@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getInvitations,
   getJoinRequests,
@@ -6,53 +7,57 @@ import {
   markNotificationRead,
   respondToJoinRequest,
 } from '../../api/endpoints'
-import type { JoinRequestRead, NotificationRead } from '../../api/types'
+import { queryKeys } from '../../api/queryKeys'
+import type { NotificationRead } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
 import { useMyTeam } from '../../context/MyTeamContext'
-import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime } from '../../utils'
 
 export default function NotificationsPage() {
   const { isLeader, refresh } = useMyTeam()
-  const [notifications, setNotifications] = useState<NotificationRead[]>([])
-  const [pending, setPending] = useState<JoinRequestRead[]>([])
-  const [invitations, setInvitations] = useState<JoinRequestRead[]>([])
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
 
-  const poll = useCallback(async () => {
-    try {
-      setNotifications(await getNotifications())
-      setInvitations(await getInvitations())
-      if (isLeader) {
-        setPending(await getJoinRequests())
-      }
-    } catch {
-      // polling errors are transient; don't spam the banner
-    }
-  }, [isLeader])
-
-  usePolling(poll, 25_000)
+  const { data: notifications = [] } = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: getNotifications,
+    refetchInterval: 25_000,
+  })
+  const { data: invitations = [] } = useQuery({
+    queryKey: queryKeys.invitations,
+    queryFn: getInvitations,
+    refetchInterval: 25_000,
+  })
+  const { data: pending = [] } = useQuery({
+    queryKey: queryKeys.joinRequests,
+    queryFn: getJoinRequests,
+    refetchInterval: 25_000,
+    enabled: isLeader,
+  })
 
   const handleRespond = async (requestId: string, decision: 'approve' | 'reject') => {
     setError(null)
     try {
       await respondToJoinRequest(requestId, decision)
       await refresh()
-      await poll()
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.invitations }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.joinRequests }),
+      ])
     } catch (err) {
       setError((err as Error).message)
     }
   }
 
   const handleMarkRead = async (notificationId: string) => {
-    setNotifications((current) =>
-      current.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+    queryClient.setQueryData<NotificationRead[]>(queryKeys.notifications, (current) =>
+      current?.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
     )
     try {
       await markNotificationRead(notificationId)
     } catch (err) {
       setError((err as Error).message)
-      await poll()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.notifications })
     }
   }
 

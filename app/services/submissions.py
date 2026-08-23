@@ -1,5 +1,7 @@
 import re
+import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -13,6 +15,27 @@ GITHUB_RE = re.compile(r"^https://(www\.)?github\.com/[\w.-]+/[\w.-]+(/.*)?$")
 URL_RE = re.compile(r"^https://\S+$")
 
 Round = Literal[1, 2]
+
+
+@dataclass
+class _DeadlineSnapshot:
+    submission_deadline_at: datetime | None
+    round2_submission_deadline_at: datetime | None
+    fetched_at: float
+
+
+# The deadlines are read on every submission create/update but only written
+# from two admin actions (set_countdown, set_submission_deadline in
+# content.py). Cache a plain snapshot (not the ORM row, to avoid detached-
+# instance issues across sessions) with a short TTL, and those writers call
+# invalidate_event_settings_cache() after commit for immediate consistency.
+_deadline_cache: _DeadlineSnapshot | None = None
+_DEADLINE_CACHE_TTL_SECONDS = 30.0
+
+
+def invalidate_event_settings_cache() -> None:
+    global _deadline_cache
+    _deadline_cache = None
 
 
 def validate_github_url(url: str) -> None:
@@ -57,12 +80,26 @@ def _as_utc(dt: datetime) -> datetime:
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
-async def ensure_deadline_open(db: AsyncSession, round: Round) -> None:
+async def _get_deadline_snapshot(db: AsyncSession) -> _DeadlineSnapshot:
+    global _deadline_cache
+    now = time.monotonic()
+    if _deadline_cache is not None and (now - _deadline_cache.fetched_at) < _DEADLINE_CACHE_TTL_SECONDS:
+        return _deadline_cache
     settings_row = await get_event_settings(db)
+    _deadline_cache = _DeadlineSnapshot(
+        submission_deadline_at=settings_row.submission_deadline_at,
+        round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
+        fetched_at=now,
+    )
+    return _deadline_cache
+
+
+async def ensure_deadline_open(db: AsyncSession, round: Round) -> None:
+    snapshot = await _get_deadline_snapshot(db)
     deadline = (
-        settings_row.submission_deadline_at
+        snapshot.submission_deadline_at
         if round == 1
-        else settings_row.round2_submission_deadline_at
+        else snapshot.round2_submission_deadline_at
     )
     if deadline is not None and datetime.now(timezone.utc) > _as_utc(deadline):
         raise ApiError(409, f"The round {round} submission deadline has passed")

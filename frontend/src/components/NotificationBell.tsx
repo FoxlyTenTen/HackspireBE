@@ -1,25 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getNotifications, markNotificationRead } from '../api/endpoints'
+import { queryKeys } from '../api/queryKeys'
 import type { NotificationRead } from '../api/types'
-import { usePolling } from '../hooks/usePolling'
 import { formatDateTime } from '../utils'
 import { BellIcon } from './icons'
 
 export default function NotificationBell() {
-  const [notifications, setNotifications] = useState<NotificationRead[]>([])
+  const queryClient = useQueryClient()
+  const { data: notifications = [] } = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: getNotifications,
+    refetchInterval: 25_000,
+  })
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-
-  const poll = useCallback(async () => {
-    try {
-      setNotifications(await getNotifications())
-    } catch {
-      // transient polling errors — ignore, next tick retries
-    }
-  }, [])
-
-  usePolling(poll, 25_000)
 
   useEffect(() => {
     if (!open) return
@@ -33,11 +29,13 @@ export default function NotificationBell() {
   const unreadCount = notifications.filter((n) => !n.read).length
 
   const handleMarkRead = async (id: string) => {
-    setNotifications((current) => current.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    queryClient.setQueryData<NotificationRead[]>(queryKeys.notifications, (current) =>
+      current?.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    )
     try {
       await markNotificationRead(id)
     } catch {
-      await poll()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.notifications })
     }
   }
 

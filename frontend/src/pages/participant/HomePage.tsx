@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   downloadMaterial,
   getAnnouncements,
@@ -9,17 +10,10 @@ import {
   getNotifications,
   getWinners,
 } from '../../api/endpoints'
-import type {
-  AnnouncementRead,
-  EventInfo,
-  FinalistRead,
-  MaterialRead,
-  NotificationRead,
-  WinnerRead,
-} from '../../api/types'
+import { queryKeys } from '../../api/queryKeys'
+import type { MaterialRead } from '../../api/types'
 import ErrorBanner from '../../components/ErrorBanner'
 import { AnnouncementsIcon } from '../../components/icons'
-import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime, resolveFileUrl } from '../../utils'
 
 function Countdown({ target }: { target: string }) {
@@ -42,31 +36,30 @@ function Countdown({ target }: { target: string }) {
 }
 
 export default function HomePage() {
-  const [info, setInfo] = useState<EventInfo | null>(null)
-  const [materials, setMaterials] = useState<MaterialRead[]>([])
-  const [finalists, setFinalists] = useState<FinalistRead[]>([])
-  const [winners, setWinners] = useState<WinnerRead[]>([])
-  const [notifications, setNotifications] = useState<NotificationRead[]>([])
-  const [announcements, setAnnouncements] = useState<AnnouncementRead[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
-  useEffect(() => {
-    Promise.all([getEventInfo(), getMaterials(), getFinalists(), getWinners(), getAnnouncements()])
-      .then(([eventInfo, materialList, finalistList, winnerList, announcementList]) => {
-        setInfo(eventInfo)
-        setMaterials(materialList.filter((m) => m.category === 'general'))
-        setFinalists(finalistList)
-        setWinners(winnerList)
-        setAnnouncements(announcementList)
-      })
-      .catch((err: Error) => setError(err.message))
-  }, [])
+  const eventInfoQuery = useQuery({ queryKey: ['event-info'], queryFn: getEventInfo })
+  const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials })
+  const finalistsQuery = useQuery({ queryKey: ['finalists'], queryFn: getFinalists })
+  const winnersQuery = useQuery({ queryKey: ['winners'], queryFn: getWinners })
+  const announcementsQuery = useQuery({ queryKey: ['announcements'], queryFn: getAnnouncements })
+  const { data: notifications = [] } = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: getNotifications,
+    refetchInterval: 25_000,
+  })
 
-  const pollNotifications = useCallback(
-    () => getNotifications().then(setNotifications).catch(() => {}),
-    [],
-  )
-  usePolling(pollNotifications, 25_000)
+  const info = eventInfoQuery.data ?? null
+  const materials = (materialsQuery.data ?? []).filter((m) => m.category === 'general')
+  const finalists = finalistsQuery.data ?? []
+  const winners = winnersQuery.data ?? []
+  const announcements = announcementsQuery.data ?? []
+  const loadError =
+    eventInfoQuery.error ??
+    materialsQuery.error ??
+    finalistsQuery.error ??
+    winnersQuery.error ??
+    announcementsQuery.error
 
   const handleDownload = async (material: MaterialRead) => {
     try {
@@ -80,11 +73,12 @@ export default function HomePage() {
       link.remove()
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Download failed')
+      setDownloadError(err instanceof Error ? err.message : 'Download failed')
     }
   }
 
-  if (error) return <ErrorBanner message={error} />
+  if (downloadError) return <ErrorBanner message={downloadError} />
+  if (loadError) return <ErrorBanner message={(loadError as Error).message} />
   if (!info) return <p>Loading…</p>
 
   const latestAnnouncements = announcements.slice(0, 3)

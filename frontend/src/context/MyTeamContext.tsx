@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext } from 'react'
 import type { ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getParticipants, getTeam, listTeams } from '../api/endpoints'
+import { queryKeys } from '../api/queryKeys'
 import type { TeamRead } from '../api/types'
 import { useAuth } from './AuthContext'
 
@@ -18,35 +20,34 @@ const MyTeamContext = createContext<MyTeamValue | null>(null)
 /**
  * There is no /me endpoint, so the viewer's team is derived from the
  * participant list (self row carries team_name) matched against the team list.
+ * The participant list is fetched under the shared `queryKeys.participants('')`
+ * key, so this reuses ParticipantsPage's cache instead of a second round trip.
  */
 export function MyTeamProvider({ children }: { children: ReactNode }) {
   const { auth } = useAuth()
   const userId = auth?.userId ?? ''
-  const [team, setTeam] = useState<TeamRead | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    try {
-      const participants = await getParticipants()
+  const { data: team = null, isLoading: loading } = useQuery({
+    queryKey: ['my-team', userId],
+    enabled: userId !== '',
+    queryFn: async (): Promise<TeamRead | null> => {
+      const participants = await queryClient.fetchQuery({
+        queryKey: queryKeys.participants(),
+        queryFn: () => getParticipants(),
+      })
       const me = participants.find((p) => p.id === userId)
-      if (!me || me.status === 'no_team' || !me.team_name) {
-        setTeam(null)
-        return
-      }
+      if (!me || me.status === 'no_team' || !me.team_name) return null
       const teams = await listTeams(me.team_name)
       const mine = teams.find((t) => t.name === me.team_name)
-      setTeam(mine ? await getTeam(mine.id) : null)
-    } catch {
-      setTeam(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [userId])
+      return mine ? await getTeam(mine.id) : null
+    },
+  })
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.participants() })
+    await queryClient.invalidateQueries({ queryKey: ['my-team', userId] })
+  }, [queryClient, userId])
 
   const isLeader = team !== null && team.leader_id === userId
 

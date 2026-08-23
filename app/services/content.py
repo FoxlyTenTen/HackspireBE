@@ -29,7 +29,7 @@ from app.schemas.event import (
 from app.services.audit import log_admin_action
 from app.services.notifications import all_participant_ids, create_notifications
 from app.services.storage import get_materials_storage
-from app.services.submissions import get_event_settings
+from app.services.submissions import get_event_settings, invalidate_event_settings_cache
 
 
 async def event_info(db: AsyncSession) -> EventInfoResponse:
@@ -102,6 +102,7 @@ async def set_countdown(db: AsyncSession, admin: Profile, countdown_at: datetime
         db, admin.id, "countdown_updated", target_table="event_settings", target_id=None
     )
     await db.commit()
+    invalidate_event_settings_cache()
     return settings_row
 
 
@@ -118,6 +119,7 @@ async def set_submission_deadline(
         db, admin.id, f"round{round}_submission_deadline_updated", target_table="event_settings"
     )
     await db.commit()
+    invalidate_event_settings_cache()
     return settings_row
 
 
