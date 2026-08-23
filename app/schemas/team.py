@@ -56,9 +56,3 @@ class TeamRead(BaseModel):
     created_at: datetime
     member_count: int
     members: list[TeamMemberRead]
-
-
-class AddMemberRequest(BaseModel):
-    participant_id: uuid.UUID = Field(
-        description="Profile ID of an unassigned participant to add directly"
-    )

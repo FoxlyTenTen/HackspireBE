@@ -66,13 +66,21 @@ export interface JoinRequestRead {
   participant_id: string
   participant_name: string
   status: 'pending' | 'approved' | 'rejected'
+  initiated_by: 'participant' | 'leader'
   created_at: string
   responded_at: string | null
 }
 
 export interface NotificationRead {
   id: string
-  type: 'join_request' | 'join_response' | 'announcement' | 'team_update' | 'round2_open'
+  type:
+    | 'join_request'
+    | 'join_response'
+    | 'announcement'
+    | 'team_update'
+    | 'round2_open'
+    | 'team_invite'
+    | 'invite_response'
   reference_id: string | null
   message: string
   read: boolean
@@ -105,6 +113,9 @@ export interface TimelineItem {
   status: TimelineStatus
   remarks: string | null
   order_index: number
+  zoom_link: string | null
+  material_file_url: string | null
+  material_file_name: string | null
 }
 
 export interface TimelineItemWrite {
@@ -120,6 +131,9 @@ export interface TimelineItemWrite {
   status: TimelineStatus
   remarks?: string | null
   order_index: number
+  zoom_link?: string | null
+  material_file_url?: string | null
+  material_file_name?: string | null
 }
 
 export interface TimelineImportRow {

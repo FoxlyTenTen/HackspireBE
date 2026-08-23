@@ -28,6 +28,7 @@ from app.schemas.event import (
 )
 from app.services.audit import log_admin_action
 from app.services.notifications import all_participant_ids, create_notifications
+from app.services.storage import get_materials_storage
 from app.services.submissions import get_event_settings
 
 
@@ -138,6 +139,9 @@ async def replace_timeline(
             status=item.status,
             remarks=item.remarks,
             order_index=item.order_index,
+            zoom_link=item.zoom_link,
+            material_file_url=item.material_file_url,
+            material_file_name=item.material_file_name,
         )
         for item in items
     ]
@@ -151,6 +155,81 @@ async def replace_timeline(
     )
     await db.commit()
     return sorted(new_items, key=lambda i: i.order_index)
+
+
+async def get_timeline_item_or_404(db: AsyncSession, item_id: uuid.UUID) -> TimelineItem:
+    item = await db.get(TimelineItem, item_id)
+    if item is None:
+        raise ApiError(404, "Timeline item not found")
+    return item
+
+
+async def update_timeline_item(
+    db: AsyncSession,
+    admin: Profile,
+    item_id: uuid.UUID,
+    *,
+    bootcamp_name: str | None = None,
+    date_label: str | None = None,
+    time_session: str | None = None,
+    session_type: str | None = None,
+    speaker_name: str | None = None,
+    speaker_bio: str | None = None,
+    organization: str | None = None,
+    session_description: str | None = None,
+    speaker_photo_url: str | None = None,
+    status: str | None = None,
+    remarks: str | None = None,
+    order_index: int | None = None,
+    zoom_link: str | None = None,
+    material_file: tuple[str, str] | None = None,
+    remove_material: bool = False,
+) -> TimelineItem:
+    item = await get_timeline_item_or_404(db, item_id)
+    if bootcamp_name is not None:
+        item.bootcamp_name = bootcamp_name
+    if date_label is not None:
+        item.date_label = date_label
+    if time_session is not None:
+        item.time_session = time_session
+    if session_type is not None:
+        item.session_type = session_type
+    if speaker_name is not None:
+        item.speaker_name = speaker_name
+    if speaker_bio is not None:
+        item.speaker_bio = speaker_bio
+    if organization is not None:
+        item.organization = organization
+    if session_description is not None:
+        item.session_description = session_description
+    if speaker_photo_url is not None:
+        item.speaker_photo_url = speaker_photo_url
+    if status is not None:
+        item.status = status
+    if remarks is not None:
+        item.remarks = remarks
+    if order_index is not None:
+        item.order_index = order_index
+    if zoom_link is not None:
+        item.zoom_link = zoom_link
+
+    if material_file is not None:
+        old_url = item.material_file_url
+        file_name, file_url = material_file
+        item.material_file_name = file_name
+        item.material_file_url = file_url
+        if old_url:
+            await get_materials_storage().delete(old_url)
+    elif remove_material and item.material_file_url:
+        await get_materials_storage().delete(item.material_file_url)
+        item.material_file_url = None
+        item.material_file_name = None
+
+    log_admin_action(
+        db, admin.id, "timeline_item_updated", target_table="timeline_items", target_id=item.id
+    )
+    await db.commit()
+    return item
 
 
 async def _ensure_teams_exist(db: AsyncSession, team_ids: list[uuid.UUID]) -> None:

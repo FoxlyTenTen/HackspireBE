@@ -72,6 +72,66 @@ async def update_timeline(
     return await content_service.replace_timeline(db, admin, body.items)
 
 
+@router.patch(
+    "/event/timeline/{item_id}",
+    response_model=TimelineItemRead,
+    summary="Edit a single timeline entry",
+    description=(
+        "Partial update of one timeline item — only the fields sent are changed. "
+        "Optionally attach/replace a material file, or set remove_material=true "
+        "to detach the existing one. Sending zoom_link as an empty string clears it."
+    ),
+    responses=error_responses(400, 401, 403, 404, 422),
+)
+async def update_timeline_item(
+    item_id: uuid.UUID,
+    bootcamp_name: str | None = Form(default=None),
+    date_label: str | None = Form(default=None),
+    time_session: str | None = Form(default=None),
+    session_type: str | None = Form(default=None),
+    speaker_name: str | None = Form(default=None),
+    speaker_bio: str | None = Form(default=None),
+    organization: str | None = Form(default=None),
+    session_description: str | None = Form(default=None),
+    speaker_photo_url: str | None = Form(default=None),
+    status: str | None = Form(default=None),
+    remarks: str | None = Form(default=None),
+    order_index: int | None = Form(default=None),
+    zoom_link: str | None = Form(default=None),
+    remove_material: bool = Form(default=False),
+    material: UploadFile | None = File(default=None, description="Optional material file to attach"),
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> TimelineItemRead:
+    material_file: tuple[str, str] | None = None
+    if material is not None and material.filename:
+        content = await material.read()
+        if not content:
+            raise ApiError(400, "Uploaded material is empty")
+        file_url = await get_materials_storage().save(material.filename, content)
+        material_file = (material.filename, file_url)
+    return await content_service.update_timeline_item(
+        db,
+        admin,
+        item_id,
+        bootcamp_name=bootcamp_name,
+        date_label=date_label,
+        time_session=time_session,
+        session_type=session_type,
+        speaker_name=speaker_name,
+        speaker_bio=speaker_bio,
+        organization=organization,
+        session_description=session_description,
+        speaker_photo_url=speaker_photo_url,
+        status=status,
+        remarks=remarks,
+        order_index=order_index,
+        zoom_link=zoom_link,
+        material_file=material_file,
+        remove_material=remove_material,
+    )
+
+
 @router.post(
     "/timeline/import",
     response_model=TimelineImportPreviewResponse,

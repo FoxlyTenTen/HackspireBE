@@ -24,6 +24,9 @@ class TimelineItemRead(BaseModel):
     status: TimelineStatus
     remarks: str | None
     order_index: int
+    zoom_link: str | None
+    material_file_url: str | None
+    material_file_name: str | None
 
 
 class TimelineItemWrite(BaseModel):
@@ -39,6 +42,11 @@ class TimelineItemWrite(BaseModel):
     status: TimelineStatus = Field(default="TBD")
     remarks: str | None = Field(default=None)
     order_index: int = Field(default=0, examples=[0])
+    zoom_link: str | None = Field(default=None)
+    material_file_url: str | None = Field(
+        default=None, description="Pass through unchanged — set via PATCH /admin/event/timeline/{id}"
+    )
+    material_file_name: str | None = Field(default=None)
 
 
 class TimelineUpdate(BaseModel):

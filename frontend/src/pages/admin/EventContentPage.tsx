@@ -12,6 +12,7 @@ import {
   adminTimelineImportConfirm,
   adminTimelineImportPreview,
   adminUpdateAnnouncement,
+  adminUpdateTimelineItem,
   adminUploadMaterial,
   getAnnouncements,
   getEventInfo,
@@ -31,7 +32,9 @@ import { formatDateTime, localInputToIso, resolveFileUrl } from '../../utils'
 
 const TIMELINE_STATUSES: TimelineStatus[] = ['TBD', 'Proposed', 'Confirmed', 'Declined']
 
-function blankRow(order_index: number): TimelineItemWrite {
+type TimelineRow = TimelineItemWrite & { id?: string }
+
+function blankRow(order_index: number): TimelineRow {
   return {
     bootcamp_name: '',
     date_label: '',
@@ -45,6 +48,7 @@ function blankRow(order_index: number): TimelineItemWrite {
     status: 'TBD',
     remarks: '',
     order_index,
+    zoom_link: '',
   }
 }
 
@@ -54,7 +58,7 @@ export default function EventContentPage() {
   const [materialCategory, setMaterialCategory] = useState<MaterialCategory>('general')
   const [countdownValue, setCountdownValue] = useState('')
   const [currentCountdown, setCurrentCountdown] = useState<string | null>(null)
-  const [timeline, setTimeline] = useState<TimelineItemWrite[]>([])
+  const [timeline, setTimeline] = useState<TimelineRow[]>([])
   const [timelineFile, setTimelineFile] = useState<File | null>(null)
   const [timelinePreview, setTimelinePreview] = useState<TimelineImportPreviewResponse | null>(
     null,
@@ -84,6 +88,7 @@ export default function EventContentPage() {
       setCurrentCountdown(info.countdown_at)
       setTimeline(
         info.timeline.map((item) => ({
+          id: item.id,
           bootcamp_name: item.bootcamp_name,
           date_label: item.date_label,
           time_session: item.time_session,
@@ -96,6 +101,9 @@ export default function EventContentPage() {
           status: item.status,
           remarks: item.remarks ?? '',
           order_index: item.order_index,
+          zoom_link: item.zoom_link ?? '',
+          material_file_url: item.material_file_url,
+          material_file_name: item.material_file_name,
         })),
       )
       setTeams(teamList)
@@ -127,15 +135,29 @@ export default function EventContentPage() {
     void act(() => adminSetCountdown(localInputToIso(countdownValue)), 'Countdown updated.')
   }
 
-  const updateRow = (index: number, patch: Partial<TimelineItemWrite>) => {
+  const updateRow = (index: number, patch: Partial<TimelineRow>) => {
     const next = [...timeline]
     next[index] = { ...next[index], ...patch }
     setTimeline(next)
   }
 
   const handleTimelineSave = () => {
-    const items = timeline.map((row, index) => ({ ...row, order_index: index }))
+    const items = timeline.map((row, index) => {
+      const { id: _id, ...rest } = row
+      return { ...rest, order_index: index }
+    })
     void act(() => adminSetTimeline(items), 'Timeline saved.')
+  }
+
+  const handleTimelineMaterialUpload = async (id: string, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await act(() => adminUpdateTimelineItem(id, {}, file), `Attached ${file.name}.`)
+    e.target.value = ''
+  }
+
+  const handleTimelineMaterialRemove = (id: string) => {
+    void act(() => adminUpdateTimelineItem(id, {}, null, true), 'Material removed.')
   }
 
   const moveRow = (index: number, delta: number) => {
@@ -403,6 +425,37 @@ export default function EventContentPage() {
                 value={row.remarks ?? ''}
                 onChange={(e) => updateRow(index, { remarks: e.target.value })}
               />
+            </div>
+            <div className="timeline-row">
+              <input
+                placeholder="Zoom link (optional)"
+                value={row.zoom_link ?? ''}
+                onChange={(e) => updateRow(index, { zoom_link: e.target.value })}
+              />
+              {row.id && (
+                <>
+                  {row.material_file_url ? (
+                    <span className="muted">
+                      Material:{' '}
+                      <a href={resolveFileUrl(row.material_file_url) ?? ''} target="_blank" rel="noreferrer">
+                        {row.material_file_name ?? 'view'}
+                      </a>{' '}
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => handleTimelineMaterialRemove(row.id!)}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  ) : (
+                    <input
+                      type="file"
+                      onChange={(e) => void handleTimelineMaterialUpload(row.id!, e)}
+                    />
+                  )}
+                </>
+              )}
               <button type="button" onClick={() => moveRow(index, -1)}>↑</button>
               <button type="button" onClick={() => moveRow(index, 1)}>↓</button>
               <button

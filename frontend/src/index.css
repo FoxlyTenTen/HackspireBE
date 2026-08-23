@@ -427,6 +427,23 @@ tr.flagged-row {
   border-bottom: 1px solid var(--border);
 }
 
+.timeline-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.btn-link {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
 .timeline-row {
   display: flex;
   gap: 0.4rem;

@@ -9,7 +9,15 @@ class NotificationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    type: Literal["join_request", "join_response", "announcement", "team_update", "round2_open"]
+    type: Literal[
+        "join_request",
+        "join_response",
+        "announcement",
+        "team_update",
+        "round2_open",
+        "team_invite",
+        "invite_response",
+    ]
     reference_id: uuid.UUID | None
     message: str
     read: bool

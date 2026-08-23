@@ -7,9 +7,8 @@ from app.db.models import Profile, Team
 from app.db.session import get_db
 from app.dependencies import get_current_user, require_team_leader
 from app.schemas.common import error_responses
-from app.schemas.join_request import JoinRequestRead
+from app.schemas.join_request import InviteCreate, JoinRequestRead
 from app.schemas.team import (
-    AddMemberRequest,
     TeamCreate,
     TeamListItem,
     TeamRead,
@@ -109,25 +108,35 @@ async def delete_team(
 
 
 @router.post(
-    "/{team_id}/members",
-    response_model=TeamRead,
+    "/{team_id}/invite",
+    response_model=JoinRequestRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Add a member directly (leader only)",
+    summary="Invite an unassigned participant (leader only)",
     description=(
-        "Adds an unassigned participant without any confirmation step — only the "
-        "capacity check applies. Existing members receive a `team_update` "
-        "notification."
+        "Creates a pending invite — the participant must accept it from their "
+        "Notifications page before they become a member. Team membership does "
+        "not change until then."
     ),
     responses=error_responses(401, 403, 404, 409, 422),
 )
-async def add_member(
-    body: AddMemberRequest,
+async def invite_member(
+    body: InviteCreate,
     team: Team = Depends(require_team_leader),
     user: Profile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> TeamRead:
-    await team_service.add_member(db, team.id, user, body.participant_id)
-    return await team_service.team_detail(db, team.id)
+) -> JoinRequestRead:
+    request = await join_request_service.create_invite(db, user, team.id, body.participant_id)
+    return JoinRequestRead(
+        id=request.id,
+        team_id=team.id,
+        team_name=team.name,
+        participant_id=request.participant_id,
+        participant_name=request.participant.name,
+        status=request.status,
+        initiated_by=request.initiated_by,
+        created_at=request.created_at,
+        responded_at=request.responded_at,
+    )
 
 
 @router.delete(

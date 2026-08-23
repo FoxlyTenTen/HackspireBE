@@ -27,6 +27,20 @@ async def list_pending(
     return await join_request_service.list_pending_for_leader(db, user)
 
 
+@router.get(
+    "/invitations",
+    response_model=list[JoinRequestRead],
+    summary="Pending invitations for the current participant",
+    description="Leader-initiated invites awaiting this participant's decision.",
+    responses=error_responses(401, 403),
+)
+async def list_invitations(
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[JoinRequestRead]:
+    return await join_request_service.list_pending_for_participant(db, user)
+
+
 @router.post(
     "/{request_id}/respond",
     response_model=JoinRequestRead,

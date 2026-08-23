@@ -99,6 +99,10 @@ class JoinRequest(Base):
     # pending | approved | rejected — "one pending per participant" enforced in the
     # service layer inside the locked transaction (portable across SQLite/Postgres)
     status: Mapped[str] = mapped_column(Text, default="pending")
+    # participant | leader — who created this row; determines who must respond
+    # (participant-initiated: the leader responds; leader-initiated invite: the
+    # invited participant responds)
+    initiated_by: Mapped[str] = mapped_column(Text, default="participant")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     responded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -171,6 +175,9 @@ class TimelineItem(Base):
     status: Mapped[str] = mapped_column(Text, default="TBD")
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    zoom_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    material_file_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    material_file_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Finalist(Base):
@@ -248,6 +255,7 @@ class Notification(Base):
         Uuid, ForeignKey("profiles.id"), index=True
     )
     # join_request | join_response | announcement | team_update | round2_open
+    # | team_invite | invite_response
     type: Mapped[str] = mapped_column(Text)
     reference_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     message: Mapped[str] = mapped_column(Text)

@@ -26,6 +26,7 @@ def _to_read(req: JoinRequest) -> JoinRequestRead:
         participant_id=req.participant_id,
         participant_name=req.participant.name,
         status=req.status,
+        initiated_by=req.initiated_by,
         created_at=req.created_at,
         responded_at=req.responded_at,
     )
@@ -49,7 +50,7 @@ async def create_request(
     ensure_unlocked(team)
     if len(await member_ids(db, team.id)) >= team.capacity:
         raise ApiError(409, "Team is already full")
-    request = JoinRequest(team_id=team.id, participant_id=user.id)
+    request = JoinRequest(team_id=team.id, participant_id=user.id, initiated_by="participant")
     db.add(request)
     await db.flush()
     create_notification(
@@ -57,6 +58,42 @@ async def create_request(
         team.leader_id,
         "join_request",
         f"{user.name} requested to join your team {team.name}",
+        reference_id=request.id,
+    )
+    await db.commit()
+    return request
+
+
+async def create_invite(
+    db: AsyncSession, leader: Profile, team_id: uuid.UUID, participant_id: uuid.UUID
+) -> JoinRequest:
+    """Leader invites an unassigned participant; the participant must accept."""
+    team = await get_team_or_404(db, team_id, for_update=True)
+    ensure_unlocked(team)
+    target = await db.get(Profile, participant_id)
+    if target is None or target.role != "participant":
+        raise ApiError(404, "Participant not found")
+    if await get_membership(db, participant_id) is not None:
+        raise ApiError(409, "Participant already belongs to a team")
+    pending = await db.scalar(
+        select(JoinRequest).where(
+            JoinRequest.participant_id == participant_id, JoinRequest.status == "pending"
+        )
+    )
+    if pending is not None:
+        raise ApiError(409, "This participant already has a pending join request or invite")
+    if len(await member_ids(db, team.id)) >= team.capacity:
+        raise ApiError(409, "Team is already full")
+    request = JoinRequest(team_id=team.id, participant_id=participant_id, initiated_by="leader")
+    db.add(request)
+    await db.flush()
+    request.participant = target
+    request.team = team
+    create_notification(
+        db,
+        participant_id,
+        "team_invite",
+        f"You were invited to join {team.name}",
         reference_id=request.id,
     )
     await db.commit()
@@ -80,6 +117,24 @@ async def list_pending_for_leader(
     return [_to_read(r) for r in requests]
 
 
+async def list_pending_for_participant(
+    db: AsyncSession, user: Profile
+) -> list[JoinRequestRead]:
+    requests = (
+        await db.scalars(
+            select(JoinRequest)
+            .where(
+                JoinRequest.participant_id == user.id,
+                JoinRequest.initiated_by == "leader",
+                JoinRequest.status == "pending",
+            )
+            .options(selectinload(JoinRequest.participant), selectinload(JoinRequest.team))
+            .order_by(JoinRequest.created_at)
+        )
+    ).all()
+    return [_to_read(r) for r in requests]
+
+
 async def respond(
     db: AsyncSession, user: Profile, request_id: uuid.UUID, decision: str
 ) -> JoinRequestRead:
@@ -94,7 +149,10 @@ async def respond(
     # approval) serialize on Postgres
     team = await get_team_or_404(db, request.team_id, for_update=True)
     request.team = team
-    if team.leader_id != user.id:
+    if request.initiated_by == "leader":
+        if request.participant_id != user.id:
+            raise ApiError(403, "Only the invited participant can respond to this invite")
+    elif team.leader_id != user.id:
         raise ApiError(403, "Only the team leader can respond to this request")
     if request.status != "pending":
         raise ApiError(409, "This request has already been responded to")
@@ -125,13 +183,22 @@ async def respond(
         for other in others:
             other.status = "rejected"
             other.responded_at = now
-        create_notification(
-            db,
-            request.participant_id,
-            "join_response",
-            f"Your request to join {team.name} was approved",
-            reference_id=request.id,
-        )
+        if request.initiated_by == "leader":
+            create_notification(
+                db,
+                team.leader_id,
+                "invite_response",
+                f"{request.participant.name} accepted your invite to {team.name}",
+                reference_id=request.id,
+            )
+        else:
+            create_notification(
+                db,
+                request.participant_id,
+                "join_response",
+                f"Your request to join {team.name} was approved",
+                reference_id=request.id,
+            )
         create_notifications(
             db,
             existing_ids,
@@ -141,13 +208,22 @@ async def respond(
         )
     else:
         request.status = "rejected"
-        create_notification(
-            db,
-            request.participant_id,
-            "join_response",
-            f"Your request to join {team.name} was rejected",
-            reference_id=request.id,
-        )
+        if request.initiated_by == "leader":
+            create_notification(
+                db,
+                team.leader_id,
+                "invite_response",
+                f"{request.participant.name} declined your invite to {team.name}",
+                reference_id=request.id,
+            )
+        else:
+            create_notification(
+                db,
+                request.participant_id,
+                "join_response",
+                f"Your request to join {team.name} was rejected",
+                reference_id=request.id,
+            )
 
     await db.commit()
     return _to_read(request)

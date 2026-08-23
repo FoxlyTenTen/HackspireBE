@@ -156,6 +156,25 @@ export default function HomePage() {
                 </div>
               )}
               {item.session_description && <div className="muted">{item.session_description}</div>}
+              {(item.zoom_link || item.material_file_url) && (
+                <div className="timeline-actions">
+                  {item.zoom_link && (
+                    <a href={item.zoom_link} target="_blank" rel="noreferrer" className="btn-link">
+                      Join session
+                    </a>
+                  )}
+                  {item.material_file_url && (
+                    <a
+                      href={resolveFileUrl(item.material_file_url) ?? ''}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-link"
+                    >
+                      Download material
+                    </a>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

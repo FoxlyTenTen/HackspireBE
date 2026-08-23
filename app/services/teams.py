@@ -171,32 +171,6 @@ async def _delete_team_row(db: AsyncSession, team: Team) -> None:
     await db.delete(team)
 
 
-async def add_member(
-    db: AsyncSession, team_id: uuid.UUID, leader: Profile, participant_id: uuid.UUID
-) -> None:
-    """Leader adds an unassigned participant directly (no confirmation needed)."""
-    team = await get_team_or_404(db, team_id, for_update=True)
-    ensure_unlocked(team)
-    target = await db.get(Profile, participant_id)
-    if target is None or target.role != "participant":
-        raise ApiError(404, "Participant not found")
-    if await get_membership(db, participant_id) is not None:
-        raise ApiError(409, "Participant already belongs to a team")
-    existing_ids = await member_ids(db, team.id)
-    if len(existing_ids) >= team.capacity:
-        raise ApiError(409, "Team is already full")
-    db.add(TeamMember(team_id=team.id, participant_id=participant_id))
-    sync_full_status(team, len(existing_ids) + 1)
-    create_notifications(
-        db,
-        existing_ids,
-        "team_update",
-        f"{target.name} joined your team {team.name}",
-        reference_id=team.id,
-    )
-    await db.commit()
-
-
 async def remove_member(
     db: AsyncSession, team: Team, participant_id: uuid.UUID
 ) -> None:

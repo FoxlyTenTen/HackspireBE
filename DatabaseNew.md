@@ -45,7 +45,7 @@ Extends Supabase's built-in `auth.users` — one row per login account, particip
 | joined_at | timestamptz | |
 
 ## join_requests
-Unique constraint: one pending request per participant_id at a time. 🆕 Frontend requires a confirmation step before this row is created — UI-only, no schema impact.
+Unique constraint: one pending request per participant_id at a time. 🆕 Frontend requires a confirmation step before this row is created — UI-only, no schema impact. 🆕 Also used for leader-initiated invites (see `initiated_by`) — a leader inviting a participant creates a row here too, and the participant is the one who must respond to it.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -53,6 +53,7 @@ Unique constraint: one pending request per participant_id at a time. 🆕 Fronte
 | team_id | uuid | FK → teams.id, ON DELETE CASCADE |
 | participant_id | uuid | FK → profiles.id |
 | status | text | `pending` \| `approved` \| `rejected` |
+| **initiated_by** | text | 🆕 `participant` \| `leader` — who created the row; determines who must respond (participant-initiated: the leader responds; leader-initiated: the invited participant responds) |
 | created_at | timestamptz | |
 | responded_at | timestamptz | nullable |
 
@@ -100,6 +101,9 @@ Single-row config table. Contact info is hardcoded in the frontend, not stored h
 | status | text | `TBD` \| `Proposed` \| `Confirmed` \| `Declined` — admin-facing, likely filtered out of the participant view |
 | remarks | text | nullable — admin-only notes |
 | order_index | int | for manual reordering after import |
+| **zoom_link** | text | 🆕 nullable — optional meeting URL for this session |
+| **material_file_url** | text | 🆕 nullable — public bucket URL of an optional attached file (slides/handout), set via `PATCH /admin/event/timeline/{id}` |
+| **material_file_name** | text | 🆕 nullable — original file name of the attached material |
 
 ## finalists
 
@@ -165,7 +169,7 @@ team_update fires for every existing team member (not the new joiner) whenever s
 |---|---|---|
 | id | uuid | PK |
 | participant_id | uuid | FK → profiles.id — recipient |
-| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` \| `round2_open` |
+| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` \| `round2_open` \| `team_invite` \| `invite_response` |
 | reference_id | uuid | nullable — points to join_requests.id, announcements.id, or teams.id |
 | message | text | |
 | read | boolean | default false |

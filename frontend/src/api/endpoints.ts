@@ -129,8 +129,8 @@ export const updateTeam = (
 export const deleteTeam = (teamId: string) =>
   client.delete(`/teams/${teamId}`).then((r) => r.data)
 
-export const addTeamMember = (teamId: string, participant_id: string) =>
-  client.post<TeamRead>(`/teams/${teamId}/members`, { participant_id }).then((r) => r.data)
+export const inviteParticipant = (teamId: string, participant_id: string) =>
+  client.post<JoinRequestRead>(`/teams/${teamId}/invite`, { participant_id }).then((r) => r.data)
 
 export const removeTeamMember = (teamId: string, participantId: string) =>
   client.delete(`/teams/${teamId}/members/${participantId}`).then((r) => r.data)
@@ -144,6 +144,9 @@ export const requestToJoin = (teamId: string) =>
 // ---------- Join Requests ----------
 export const getJoinRequests = () =>
   client.get<JoinRequestRead[]>('/join-requests').then((r) => r.data)
+
+export const getInvitations = () =>
+  client.get<JoinRequestRead[]>('/join-requests/invitations').then((r) => r.data)
 
 export const respondToJoinRequest = (requestId: string, decision: 'approve' | 'reject') =>
   client
@@ -252,6 +255,37 @@ export const adminSetCountdown = (countdown_at: string) =>
 
 export const adminSetTimeline = (items: TimelineItemWrite[]) =>
   client.patch<TimelineItem[]>('/admin/event/timeline', { items }).then((r) => r.data)
+
+export const adminUpdateTimelineItem = (
+  itemId: string,
+  fields: {
+    bootcamp_name?: string
+    date_label?: string
+    time_session?: string
+    session_type?: string
+    speaker_name?: string
+    speaker_bio?: string
+    organization?: string
+    session_description?: string
+    speaker_photo_url?: string
+    status?: string
+    remarks?: string
+    order_index?: number
+    zoom_link?: string
+  },
+  material?: File | null,
+  removeMaterial?: boolean,
+) => {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined) form.append(key, String(value))
+  }
+  if (material) form.append('material', material)
+  if (removeMaterial) form.append('remove_material', 'true')
+  return client
+    .patch<TimelineItem>(`/admin/event/timeline/${itemId}`, form)
+    .then((r) => r.data)
+}
 
 export const adminTimelineImportPreview = (file: File) => {
   const form = new FormData()
