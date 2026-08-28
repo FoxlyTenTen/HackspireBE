@@ -4,6 +4,7 @@ import { MyTeamProvider, useMyTeam } from '../context/MyTeamContext'
 import {
   AnnouncementsIcon,
   BackIcon,
+  BellIcon,
   HomeIcon,
   MyTeamIcon,
   ParticipantsIcon,
@@ -24,6 +25,7 @@ function Shell() {
     { to: '/teams', label: 'Teams', icon: <TeamsIcon /> },
     { to: '/participants', label: 'Participants', icon: <ParticipantsIcon /> },
     { to: '/announcements', label: 'Announcements', icon: <AnnouncementsIcon /> },
+    { to: '/notifications', label: 'Notifications', icon: <BellIcon /> },
   ]
   if (team) {
     items.push({ to: `/teams/${team.id}`, label: 'My Team', icon: <MyTeamIcon /> })

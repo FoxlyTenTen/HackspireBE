@@ -81,6 +81,7 @@ export interface NotificationRead {
     | 'round2_open'
     | 'team_invite'
     | 'invite_response'
+    | 'broadcast'
   reference_id: string | null
   message: string
   read: boolean
@@ -169,6 +170,7 @@ export interface EventInfo {
   tagline: string
   venue: string
   countdown_at: string | null
+  countdown_description: string | null
   submission_deadline_at: string | null
   round2_submission_deadline_at: string | null
   timeline: TimelineItem[]
@@ -311,6 +313,7 @@ export interface AdminSubmissionRow {
 
 export interface EventSettingsRead {
   countdown_at: string | null
+  countdown_description: string | null
   submission_deadline_at: string | null
   round2_submission_deadline_at: string | null
   updated_at: string

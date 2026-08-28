@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.db.models import Notification, Profile
+from app.services.audit import log_admin_action
 
 
 def create_notification(
@@ -49,6 +50,17 @@ async def list_for_user(db: AsyncSession, participant_id: uuid.UUID) -> list[Not
 async def all_participant_ids(db: AsyncSession) -> list[uuid.UUID]:
     result = await db.scalars(select(Profile.id).where(Profile.role == "participant"))
     return list(result)
+
+
+async def broadcast(db: AsyncSession, admin: Profile, message: str) -> int:
+    """Send a lightweight, notification-only message to every participant."""
+    recipients = await all_participant_ids(db)
+    create_notifications(db, recipients, "broadcast", message)
+    log_admin_action(
+        db, admin.id, "notification_broadcast", target_table="notifications", details=message
+    )
+    await db.commit()
+    return len(recipients)
 
 
 async def mark_read(

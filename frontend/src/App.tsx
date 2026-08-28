@@ -5,12 +5,16 @@ import ParticipantLayout from './components/ParticipantLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import AcceptInvitePage from './pages/AcceptInvitePage'
+import AdminAnnouncementsPage from './pages/admin/AnnouncementsPage'
 import AdminAuditLogPage from './pages/admin/AuditLogPage'
+import AdminBootcampsPage from './pages/admin/BootcampsPage'
+import AdminEventsPage from './pages/admin/EventsPage'
 import AdminLoginPage from './pages/admin/LoginPage'
+import AdminMaterialsPage from './pages/admin/MaterialsPage'
 import AdminParticipantsPage from './pages/admin/ParticipantsPage'
+import AdminResultsPage from './pages/admin/ResultsPage'
 import AdminSubmissionsPage from './pages/admin/SubmissionsPage'
 import AdminTeamsPage from './pages/admin/TeamsPage'
-import EventContentPage from './pages/admin/EventContentPage'
 import AnnouncementsPage from './pages/participant/AnnouncementsPage'
 import ChangePasswordPage from './pages/participant/ChangePasswordPage'
 import HomePage from './pages/participant/HomePage'
@@ -52,7 +56,11 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/administrator/participants" element={<AdminParticipantsPage />} />
               <Route path="/administrator/teams" element={<AdminTeamsPage />} />
-              <Route path="/administrator/event" element={<EventContentPage />} />
+              <Route path="/administrator/event" element={<AdminEventsPage />} />
+              <Route path="/administrator/bootcamps" element={<AdminBootcampsPage />} />
+              <Route path="/administrator/announcements" element={<AdminAnnouncementsPage />} />
+              <Route path="/administrator/materials" element={<AdminMaterialsPage />} />
+              <Route path="/administrator/results" element={<AdminResultsPage />} />
               <Route path="/administrator/submissions" element={<AdminSubmissionsPage />} />
               <Route path="/administrator/audit-log" element={<AdminAuditLogPage />} />
             </Route>

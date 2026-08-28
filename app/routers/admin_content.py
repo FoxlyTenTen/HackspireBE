@@ -17,6 +17,7 @@ from app.schemas.admin import (
     TimelineImportPreviewResponse,
 )
 from app.schemas.common import error_responses
+from app.schemas.notification import NotificationBroadcast, NotificationBroadcastResponse
 from app.schemas.event import (
     AnnouncementRead,
     CountdownUpdate,
@@ -30,6 +31,7 @@ from app.schemas.event import (
     WinnersPut,
 )
 from app.services import content as content_service
+from app.services import notifications as notification_service
 from app.services import timeline_import as timeline_import_service
 from app.services.audit import log_admin_action
 from app.services.storage import get_announcements_storage, get_materials_storage
@@ -48,9 +50,12 @@ async def update_countdown(
     admin: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> EventSettingsRead:
-    row = await content_service.set_countdown(db, admin, body.countdown_at)
+    row = await content_service.set_countdown(
+        db, admin, body.countdown_at, body.countdown_description
+    )
     return EventSettingsRead(
         countdown_at=row.countdown_at,
+        countdown_description=row.countdown_description,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
         updated_at=row.updated_at,
@@ -333,6 +338,28 @@ async def delete_announcement(
     await content_service.delete_announcement(db, admin, announcement_id)
     if image_url:
         await get_announcements_storage().delete(image_url)
+
+
+@router.post(
+    "/notifications/broadcast",
+    response_model=NotificationBroadcastResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Send a quick notification to every participant",
+    description=(
+        "Notification-only broadcast: no title/image, not saved anywhere else, and "
+        "doesn't show up on the Announcements page — just lands in every participant's "
+        "notification feed. Use the Announcements endpoints for anything that needs "
+        "to persist and be browsable."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def broadcast_notification(
+    body: NotificationBroadcast,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationBroadcastResponse:
+    recipients = await notification_service.broadcast(db, admin, body.message)
+    return NotificationBroadcastResponse(recipients=recipients)
 
 
 @router.get(

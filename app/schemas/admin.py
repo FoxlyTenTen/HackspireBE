@@ -181,6 +181,7 @@ class DeadlineUpdate(BaseModel):
 
 class EventSettingsRead(BaseModel):
     countdown_at: datetime | None
+    countdown_description: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
     updated_at: datetime

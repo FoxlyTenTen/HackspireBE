@@ -248,9 +248,12 @@ export const adminDeleteTeam = (teamId: string) =>
   client.delete(`/admin/teams/${teamId}`).then((r) => r.data)
 
 // ---------- Admin — Event Content ----------
-export const adminSetCountdown = (countdown_at: string) =>
+export const adminSetCountdown = (countdown_at: string, countdown_description?: string) =>
   client
-    .patch<EventSettingsRead>('/admin/event/countdown', { countdown_at })
+    .patch<EventSettingsRead>('/admin/event/countdown', {
+      countdown_at,
+      countdown_description: countdown_description || null,
+    })
     .then((r) => r.data)
 
 export const adminSetTimeline = (items: TimelineItemWrite[]) =>
@@ -341,6 +344,11 @@ export const adminUpdateAnnouncement = (
 
 export const adminDeleteAnnouncement = (announcementId: string) =>
   client.delete(`/admin/announcements/${announcementId}`).then((r) => r.data)
+
+export const adminBroadcastNotification = (message: string) =>
+  client
+    .post<{ recipients: number }>('/admin/notifications/broadcast', { message })
+    .then((r) => r.data)
 
 export const adminGetAuditLog = (limit = 100, offset = 0) =>
   client

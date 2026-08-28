@@ -60,6 +60,11 @@ class CountdownUpdate(BaseModel):
         description="Event start date/time the countdown targets",
         examples=["2026-09-12T09:00:00+08:00"],
     )
+    countdown_description: str | None = Field(
+        default=None,
+        description="Optional text shown under the countdown on the home page",
+        examples=["Join us for 48 hours of building, mentorship, and prizes!"],
+    )
 
 
 class EventInfoResponse(BaseModel):
@@ -67,6 +72,7 @@ class EventInfoResponse(BaseModel):
     tagline: str
     venue: str
     countdown_at: datetime | None
+    countdown_description: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
     timeline: list[TimelineItemRead]

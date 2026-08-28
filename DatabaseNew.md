@@ -79,6 +79,7 @@ Single-row config table. Contact info is hardcoded in the frontend, not stored h
 |---|---|---|
 | id | int | PK, always 1 |
 | countdown_at | timestamptz | event start |
+| **countdown_description** | text | 🆕 nullable — admin-editable blurb shown under the countdown on the home page |
 | submission_deadline_at | timestamptz | round 1 (qualifying) deadline |
 | **round2_submission_deadline_at** | timestamptz | 🆕 round 2 (finalist) deadline |
 | updated_at | timestamptz | |
@@ -169,8 +170,8 @@ team_update fires for every existing team member (not the new joiner) whenever s
 |---|---|---|
 | id | uuid | PK |
 | participant_id | uuid | FK → profiles.id — recipient |
-| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` \| `round2_open` \| `team_invite` \| `invite_response` |
-| reference_id | uuid | nullable — points to join_requests.id, announcements.id, or teams.id |
+| type | text | `join_request` \| `join_response` \| `announcement` \| `team_update` \| `round2_open` \| `team_invite` \| `invite_response` \| **`broadcast`** 🆕 |
+| reference_id | uuid | nullable — points to join_requests.id, announcements.id, or teams.id; always null for `broadcast` (no backing record) |
 | message | text | |
 | read | boolean | default false |
 | created_at | timestamptz | |

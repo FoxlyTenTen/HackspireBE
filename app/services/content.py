@@ -42,6 +42,7 @@ async def event_info(db: AsyncSession) -> EventInfoResponse:
         tagline=EVENT_INFO["tagline"],
         venue=EVENT_INFO["venue"],
         countdown_at=settings_row.countdown_at,
+        countdown_description=settings_row.countdown_description,
         submission_deadline_at=settings_row.submission_deadline_at,
         round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
         timeline=timeline,
@@ -94,9 +95,15 @@ async def list_winners(db: AsyncSession, *, published_only: bool) -> list[Winner
     ]
 
 
-async def set_countdown(db: AsyncSession, admin: Profile, countdown_at: datetime):
+async def set_countdown(
+    db: AsyncSession,
+    admin: Profile,
+    countdown_at: datetime,
+    countdown_description: str | None = None,
+):
     settings_row = await get_event_settings(db)
     settings_row.countdown_at = countdown_at
+    settings_row.countdown_description = countdown_description
     settings_row.updated_at = datetime.now(timezone.utc)
     log_admin_action(
         db, admin.id, "countdown_updated", target_table="event_settings", target_id=None

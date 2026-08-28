@@ -147,6 +147,7 @@ class EventSettings(Base):
     countdown_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    countdown_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     submission_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

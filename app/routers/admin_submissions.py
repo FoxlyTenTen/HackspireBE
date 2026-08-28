@@ -110,6 +110,7 @@ async def update_deadline(
     )
     return EventSettingsRead(
         countdown_at=row.countdown_at,
+        countdown_description=row.countdown_description,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
         updated_at=row.updated_at,

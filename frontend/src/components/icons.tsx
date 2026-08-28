@@ -116,3 +116,42 @@ export function BellIcon() {
     </svg>
   )
 }
+
+export function BootcampsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 4 2 9l10 5 10-5-10-5Z" />
+      <path d="M6 11.5v4c0 1.5 2.5 3 6 3s6-1.5 6-3v-4" />
+      <path d="M21 9v6" />
+    </svg>
+  )
+}
+
+export function MaterialsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h3.5l2 2H19a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18Z" />
+    </svg>
+  )
+}
+
+export function ResultsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5H5.5a3 3 0 0 0 3 4" />
+      <path d="M16 5h2.5a3 3 0 0 1-3 4" />
+      <path d="M12 12v3.5" />
+      <path d="M9 19.5h6" />
+      <path d="M9.7 15.5h4.6l.6 4H9.1l.6-4Z" />
+    </svg>
+  )
+}
+
+export function ChevronRightIcon() {
+  return (
+    <svg {...base}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
