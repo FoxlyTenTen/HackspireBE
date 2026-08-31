@@ -1,0 +1,101 @@
+# One-time GCP setup required before this workflow will succeed (use a NEW GCP project,
+# separate from any other demo project):
+#   1. Enable APIs: run.googleapis.com, artifactregistry.googleapis.com, iamcredentials.googleapis.com
+#   2. Create an Artifact Registry Docker repo, e.g.:
+#        gcloud artifacts repositories create hackspire-images --repository-format=docker --location=<REGION>
+#   3. Create a deploy service account and grant it:
+#        roles/run.admin, roles/iam.serviceAccountUser, roles/artifactregistry.writer
+#   4. Create a Workload Identity Federation pool + provider trusting this GitHub repo, and bind it
+#      to the service account (see: google-github-actions/auth docs "Direct Workload Identity Federation").
+#   5. Add these as GitHub repo Settings > Secrets and variables > Actions:
+#        Secrets:  GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT,
+#                  DATABASE_URL, JWT_SECRET, JWT_EXPIRES_MIN, ADMIN_EMAIL, ADMIN_PASSWORD,
+#                  ADMIN_NAME, ADMIN_STUDENT_STAFF_ID, SUPABASE_URL, SUPABASE_ANON_KEY,
+#                  SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET, FRONTEND_URL, PARTICIPANT_CAP
+#        Variables: GCP_PROJECT_ID, GCP_REGION
+#   See README.md for the full step-by-step version of all of the above.
+
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+env:
+  SERVICE: hackspire-backend
+  REGION: ${{ vars.GCP_REGION }}
+  REPO: hackspire-images
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}
+          flags: --allow-unauthenticated
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRES_MIN=${{ secrets.JWT_EXPIRES_MIN }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            ADMIN_NAME=${{ secrets.ADMIN_NAME }}
+            ADMIN_STUDENT_STAFF_ID=${{ secrets.ADMIN_STUDENT_STAFF_ID }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            PARTICIPANT_CAP=${{ secrets.PARTICIPANT_CAP }}
