@@ -22,3 +22,9 @@ venv/
 .idea/
 
 uploads/
+
+# Local-only docs — kept on disk, not published to the remote repo
+/ClaudePlan.md
+/Database.md
+/DatabaseNew.md
+/README.md
