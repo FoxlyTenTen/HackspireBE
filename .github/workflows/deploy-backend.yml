@@ -61,6 +61,25 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
+      - name: Write Cloud Run env vars file
+        run: |
+          {
+            echo "DATABASE_URL: \"${{ secrets.DATABASE_URL }}\""
+            echo "JWT_SECRET: \"${{ secrets.JWT_SECRET }}\""
+            echo "JWT_EXPIRES_MIN: \"${{ secrets.JWT_EXPIRES_MIN }}\""
+            echo "ADMIN_EMAIL: \"${{ secrets.ADMIN_EMAIL }}\""
+            echo "ADMIN_PASSWORD: \"${{ secrets.ADMIN_PASSWORD }}\""
+            echo "ADMIN_NAME: \"${{ secrets.ADMIN_NAME }}\""
+            echo "ADMIN_STUDENT_STAFF_ID: \"${{ secrets.ADMIN_STUDENT_STAFF_ID }}\""
+            echo "SUPABASE_URL: \"${{ secrets.SUPABASE_URL }}\""
+            echo "SUPABASE_ANON_KEY: \"${{ secrets.SUPABASE_ANON_KEY }}\""
+            echo "SUPABASE_SERVICE_ROLE_KEY: \"${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\""
+            echo "SUPABASE_JWT_SECRET: \"${{ secrets.SUPABASE_JWT_SECRET }}\""
+            echo "FRONTEND_URL: \"${{ secrets.FRONTEND_URL }}\""
+            echo "PARTICIPANT_CAP: \"${{ secrets.PARTICIPANT_CAP }}\""
+            echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'"
+          } > env-vars.yaml
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -68,18 +87,4 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}
           flags: --allow-unauthenticated
-          env_vars: |
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            JWT_EXPIRES_MIN=${{ secrets.JWT_EXPIRES_MIN }}
-            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
-            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-            ADMIN_NAME=${{ secrets.ADMIN_NAME }}
-            ADMIN_STUDENT_STAFF_ID=${{ secrets.ADMIN_STUDENT_STAFF_ID }}
-            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-            SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-            SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}
-            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-            PARTICIPANT_CAP=${{ secrets.PARTICIPANT_CAP }}
-            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          env_vars_file: env-vars.yaml
