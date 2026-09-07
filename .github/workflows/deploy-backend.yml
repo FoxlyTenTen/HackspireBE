@@ -79,6 +79,22 @@ jobs:
             echo "PARTICIPANT_CAP: \"${{ secrets.PARTICIPANT_CAP }}\""
           } > env-vars.yaml
 
+      # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's
+      # env_vars / env_vars_file inputs both mis-split on embedded commas
+      # regardless of quoting, corrupting the value. Set it separately via
+      # plain gcloud (which handles --env-vars-file correctly) BEFORE the
+      # image deploy below: deploy-cloudrun only *merges* the vars it's
+      # given, so if this ran after and the deploy step failed to start
+      # (e.g. because a stale/corrupt CORS_ORIGINS from a previous run was
+      # still in place), this cleanup step would never even execute.
+      - name: Set CORS_ORIGINS
+        run: |
+          echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'" > cors-origins.yaml
+          gcloud run services update ${{ env.SERVICE }} \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ env.REGION }}" \
+            --env-vars-file=cors-origins.yaml
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -87,15 +103,3 @@ jobs:
           image: ${{ env.IMAGE }}
           flags: --allow-unauthenticated
           env_vars_file: env-vars.yaml
-
-      # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's
-      # env_vars / env_vars_file inputs both mis-split on embedded commas
-      # regardless of quoting, corrupting the value. Set it separately via
-      # plain gcloud, which handles --env-vars-file correctly.
-      - name: Set CORS_ORIGINS
-        run: |
-          echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'" > cors-origins.yaml
-          gcloud run services update ${{ env.SERVICE }} \
-            --project="${{ vars.GCP_PROJECT_ID }}" \
-            --region="${{ env.REGION }}" \
-            --env-vars-file=cors-origins.yaml
