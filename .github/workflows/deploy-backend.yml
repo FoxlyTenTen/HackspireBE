@@ -81,19 +81,22 @@ jobs:
 
       # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's
       # env_vars / env_vars_file inputs both mis-split on embedded commas
-      # regardless of quoting, corrupting the value. Set it separately via
-      # plain gcloud (which handles --env-vars-file correctly) BEFORE the
-      # image deploy below: deploy-cloudrun only *merges* the vars it's
-      # given, so if this ran after and the deploy step failed to start
-      # (e.g. because a stale/corrupt CORS_ORIGINS from a previous run was
-      # still in place), this cleanup step would never even execute.
+      # regardless of quoting, corrupting the value. These are public
+      # frontend URLs, not secrets, so it's hardcoded here instead of
+      # relying on a hand-typed GitHub secret (which kept losing its
+      # quoting when pasted) — set via plain gcloud (which handles
+      # --env-vars-file correctly) BEFORE the image deploy below:
+      # deploy-cloudrun only *merges* the vars it's given, so if this ran
+      # after and the deploy step failed to start (e.g. because a stale
+      # CORS_ORIGINS from a previous run was still in place), this cleanup
+      # step would never even execute. Add new frontend URLs here directly
+      # if the Cloud Run URL ever changes.
       - name: Set CORS_ORIGINS
         run: |
-          echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'" > cors-origins.yaml
           gcloud run services update ${{ env.SERVICE }} \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ env.REGION }}" \
-            --env-vars-file=cors-origins.yaml
+            --update-env-vars='^@^CORS_ORIGINS=["https://lumina-frontend-817592154660.asia-southeast1.run.app","https://lumina-frontend-a34zs7dkea-as.a.run.app","http://localhost:5173","http://127.0.0.1:5173"]'
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
