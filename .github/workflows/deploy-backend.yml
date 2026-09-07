@@ -77,7 +77,6 @@ jobs:
             echo "SUPABASE_JWT_SECRET: \"${{ secrets.SUPABASE_JWT_SECRET }}\""
             echo "FRONTEND_URL: \"${{ secrets.FRONTEND_URL }}\""
             echo "PARTICIPANT_CAP: \"${{ secrets.PARTICIPANT_CAP }}\""
-            echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'"
           } > env-vars.yaml
 
       - name: Deploy to Cloud Run
@@ -88,3 +87,15 @@ jobs:
           image: ${{ env.IMAGE }}
           flags: --allow-unauthenticated
           env_vars_file: env-vars.yaml
+
+      # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's
+      # env_vars / env_vars_file inputs both mis-split on embedded commas
+      # regardless of quoting, corrupting the value. Set it separately via
+      # plain gcloud, which handles --env-vars-file correctly.
+      - name: Set CORS_ORIGINS
+        run: |
+          echo "CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'" > cors-origins.yaml
+          gcloud run services update ${{ env.SERVICE }} \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ env.REGION }}" \
+            --env-vars-file=cors-origins.yaml
