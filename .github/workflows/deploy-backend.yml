@@ -96,7 +96,7 @@ jobs:
           gcloud run services update ${{ env.SERVICE }} \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ env.REGION }}" \
-            --update-env-vars='^@^CORS_ORIGINS=["https://lumina-frontend-817592154660.asia-southeast1.run.app","https://lumina-frontend-a34zs7dkea-as.a.run.app","http://localhost:5173","http://127.0.0.1:5173"]'
+            --update-env-vars='^@^CORS_ORIGINS=["https://hackspirelumina.com","https://www.hackspirelumina.com","https://lumina-frontend-817592154660.asia-southeast1.run.app","https://lumina-frontend-a34zs7dkea-as.a.run.app","http://localhost:5173","http://127.0.0.1:5173"]'
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
