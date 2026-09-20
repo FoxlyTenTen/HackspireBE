@@ -198,6 +198,7 @@ async def request_to_join(
         participant_id=user.id,
         participant_name=user.name,
         status=request.status,
+        initiated_by=request.initiated_by,
         created_at=request.created_at,
         responded_at=request.responded_at,
     )

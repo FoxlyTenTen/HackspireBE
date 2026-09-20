@@ -282,6 +282,16 @@ async def put_finalists(
             "round2_open",
             "Your team has been selected as a finalist — round 2 submission is now open!",
         )
+        # Also post a public announcement so non-finalist participants see the
+        # list was published too — staged on the same session/commit as the
+        # finalist replace above, so it's atomic with it.
+        await _stage_announcement(
+            db,
+            admin,
+            "Finalists Announced",
+            "The Round 2 finalist list has been updated — check the Results page for the full list.",
+            image_url=None,
+        )
     await db.commit()
     return await list_finalists(db, published_only=False)
 
@@ -310,9 +320,13 @@ async def put_winners(db: AsyncSession, admin: Profile, data: WinnersPut) -> lis
     return await list_winners(db, published_only=False)
 
 
-async def create_announcement(
+async def _stage_announcement(
     db: AsyncSession, admin: Profile, title: str, body: str, image_url: str | None
 ) -> Announcement:
+    """Insert an Announcement row and notify every participant, without
+    committing — lets a caller fold this into a larger transaction (e.g.
+    put_finalists) or commit it immediately on its own (create_announcement).
+    """
     announcement = Announcement(
         title=title, body=body, image_url=image_url, posted_by=admin.id
     )
@@ -329,6 +343,13 @@ async def create_announcement(
     log_admin_action(
         db, admin.id, "announcement_posted", target_table="announcements", target_id=announcement.id
     )
+    return announcement
+
+
+async def create_announcement(
+    db: AsyncSession, admin: Profile, title: str, body: str, image_url: str | None
+) -> Announcement:
+    announcement = await _stage_announcement(db, admin, title, body, image_url)
     await db.commit()
     return announcement
 
