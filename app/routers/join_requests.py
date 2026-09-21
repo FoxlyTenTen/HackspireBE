@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Profile
@@ -41,6 +41,20 @@ async def list_invitations(
     return await join_request_service.list_pending_for_participant(db, user)
 
 
+@router.get(
+    "/sent",
+    response_model=list[JoinRequestRead],
+    summary="Join requests the current participant sent that are still pending",
+    description="Lets Team Formation show which teams were already asked, so a request is only sent once per team.",
+    responses=error_responses(401, 403),
+)
+async def list_sent(
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[JoinRequestRead]:
+    return await join_request_service.list_sent_by_participant(db, user)
+
+
 @router.post(
     "/{request_id}/respond",
     response_model=JoinRequestRead,
@@ -48,7 +62,9 @@ async def list_invitations(
     description=(
         "Approving re-checks capacity under a row lock, adds the requester as a "
         "member, and notifies both the requester (`join_response`) and the "
-        "existing members (`team_update`). Rejecting only notifies the requester."
+        "existing members (`team_update`). Approving also closes the participant's "
+        "other pending requests/invites and notifies those teams' leaders. "
+        "Rejecting only notifies the requester."
     ),
     responses=error_responses(401, 403, 404, 409, 422),
 )
@@ -59,3 +75,22 @@ async def respond(
     db: AsyncSession = Depends(get_db),
 ) -> JoinRequestRead:
     return await join_request_service.respond(db, user, request_id, body.decision)
+
+
+@router.delete(
+    "/{request_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cancel a pending request or invite you sent",
+    description=(
+        "A participant can cancel their own pending join request; a team leader can "
+        "cancel a pending invite their team sent. The other side's notification is "
+        "removed. Already-answered requests can't be cancelled."
+    ),
+    responses=error_responses(401, 403, 404, 409),
+)
+async def cancel(
+    request_id: uuid.UUID,
+    user: Profile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await join_request_service.cancel(db, user, request_id)

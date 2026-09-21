@@ -52,7 +52,7 @@ async def create_team(
     db: AsyncSession = Depends(get_db),
 ) -> TeamRead:
     team = await team_service.create_team(db, user, body)
-    return await team_service.team_detail(db, team.id)
+    return await team_service.team_detail(db, team.id, user)
 
 
 @router.get(
@@ -67,7 +67,7 @@ async def get_team(
     user: Profile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TeamRead:
-    return await team_service.team_detail(db, team_id)
+    return await team_service.team_detail(db, team_id, user)
 
 
 @router.patch(
@@ -85,10 +85,11 @@ async def get_team(
 async def update_team(
     body: TeamUpdate,
     team: Team = Depends(require_team_leader),
+    user: Profile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TeamRead:
     await team_service.update_team(db, team, body)
-    return await team_service.team_detail(db, team.id)
+    return await team_service.team_detail(db, team.id, user)
 
 
 @router.delete(
@@ -180,8 +181,8 @@ async def leave_team(
     status_code=status.HTTP_201_CREATED,
     summary="Request to join a team",
     description=(
-        "For participants without a team. Only one pending request is allowed at a "
-        "time. The team leader is notified and must approve or reject it."
+        "For participants without a team. A participant can ask several teams, but only "
+        "once per team. The team leader is notified and must approve or reject it."
     ),
     responses=error_responses(401, 403, 404, 409),
 )

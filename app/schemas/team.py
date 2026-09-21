@@ -34,6 +34,10 @@ class TeamUpdate(BaseModel):
 class TeamMemberRead(BaseModel):
     participant_id: uuid.UUID
     name: str
+    email: str | None = Field(
+        default=None,
+        description="Only returned to members of the same team and admins; null for everyone else",
+    )
     student_staff_id: str
     is_leader: bool
     joined_at: datetime
@@ -49,6 +53,10 @@ class TeamListItem(BaseModel):
     project_title: str | None
     preferred_roles: list[str]
     remarks: str | None
+    leader_name: str
+    leader_email: str = Field(
+        description="Shared with every participant on purpose so people browsing teams can contact the leader"
+    )
 
 
 class TeamRead(BaseModel):

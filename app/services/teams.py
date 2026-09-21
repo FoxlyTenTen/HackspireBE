@@ -66,7 +66,11 @@ async def member_ids(db: AsyncSession, team_id: uuid.UUID) -> list[uuid.UUID]:
 
 
 async def list_teams(db: AsyncSession, search: str | None) -> list[TeamListItem]:
-    stmt = select(Team).options(selectinload(Team.members)).order_by(Team.created_at)
+    stmt = (
+        select(Team)
+        .options(selectinload(Team.members), selectinload(Team.leader))
+        .order_by(Team.created_at)
+    )
     if search:
         stmt = stmt.where(Team.name.ilike(f"%{search}%"))
     teams = (await db.scalars(stmt)).all()
@@ -81,12 +85,14 @@ async def list_teams(db: AsyncSession, search: str | None) -> list[TeamListItem]
             project_title=t.project_title,
             preferred_roles=t.preferred_roles or [],
             remarks=t.remarks,
+            leader_name=t.leader.name,
+            leader_email=t.leader.email,
         )
         for t in teams
     ]
 
 
-async def team_detail(db: AsyncSession, team_id: uuid.UUID) -> TeamRead:
+async def team_detail(db: AsyncSession, team_id: uuid.UUID, viewer: Profile) -> TeamRead:
     team = await db.scalar(
         select(Team)
         .where(Team.id == team_id)
@@ -94,10 +100,14 @@ async def team_detail(db: AsyncSession, team_id: uuid.UUID) -> TeamRead:
     )
     if team is None:
         raise ApiError(404, "Team not found")
+    # Emails are only shared inside the team (and with admins) — anyone else
+    # browsing a team's detail gets null.
+    can_see_email = viewer.role == "admin" or any(m.participant_id == viewer.id for m in team.members)
     members = [
         TeamMemberRead(
             participant_id=m.participant_id,
             name=m.participant.name,
+            email=m.participant.email if can_see_email else None,
             student_staff_id=m.participant.student_staff_id,
             is_leader=m.participant_id == team.leader_id,
             joined_at=m.joined_at,

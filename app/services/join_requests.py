@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import ApiError
-from app.db.models import JoinRequest, Profile, Team, TeamMember
+from app.db.models import JoinRequest, Notification, Profile, Team, TeamMember
 from app.schemas.join_request import JoinRequestRead
 from app.services.notifications import create_notification, create_notifications
 from app.services.teams import (
@@ -39,17 +39,26 @@ async def create_request(
         raise ApiError(403, "Only participants can request to join a team")
     if await get_membership(db, user.id) is not None:
         raise ApiError(409, "You already belong to a team")
-    pending = await db.scalar(
-        select(JoinRequest).where(
-            JoinRequest.participant_id == user.id, JoinRequest.status == "pending"
-        )
-    )
-    if pending is not None:
-        raise ApiError(409, "You already have a pending join request")
     team = await get_team_or_404(db, team_id, for_update=True)
     ensure_unlocked(team)
     if len(await member_ids(db, team.id)) >= team.capacity:
         raise ApiError(409, "Team is already full")
+    # A participant may ask several teams at once; only one open ask per team.
+    # The team row is locked above, so this check can't race a duplicate.
+    existing = await db.scalar(
+        select(JoinRequest).where(
+            JoinRequest.team_id == team.id,
+            JoinRequest.participant_id == user.id,
+            JoinRequest.status == "pending",
+        )
+    )
+    if existing is not None:
+        raise ApiError(
+            409,
+            "This team already invited you — respond from your Notifications"
+            if existing.initiated_by == "leader"
+            else "You already requested to join this team",
+        )
     request = JoinRequest(team_id=team.id, participant_id=user.id, initiated_by="participant")
     db.add(request)
     await db.flush()
@@ -75,13 +84,20 @@ async def create_invite(
         raise ApiError(404, "Participant not found")
     if await get_membership(db, participant_id) is not None:
         raise ApiError(409, "Participant already belongs to a team")
-    pending = await db.scalar(
+    existing = await db.scalar(
         select(JoinRequest).where(
-            JoinRequest.participant_id == participant_id, JoinRequest.status == "pending"
+            JoinRequest.team_id == team.id,
+            JoinRequest.participant_id == participant_id,
+            JoinRequest.status == "pending",
         )
     )
-    if pending is not None:
-        raise ApiError(409, "This participant already has a pending join request or invite")
+    if existing is not None:
+        raise ApiError(
+            409,
+            "This participant already asked to join your team — approve it from Pending join requests"
+            if existing.initiated_by == "participant"
+            else "You already invited this participant",
+        )
     if len(await member_ids(db, team.id)) >= team.capacity:
         raise ApiError(409, "Team is already full")
     request = JoinRequest(team_id=team.id, participant_id=participant_id, initiated_by="leader")
@@ -126,6 +142,24 @@ async def list_pending_for_participant(
             .where(
                 JoinRequest.participant_id == user.id,
                 JoinRequest.initiated_by == "leader",
+                JoinRequest.status == "pending",
+            )
+            .options(selectinload(JoinRequest.participant), selectinload(JoinRequest.team))
+            .order_by(JoinRequest.created_at)
+        )
+    ).all()
+    return [_to_read(r) for r in requests]
+
+
+async def list_sent_by_participant(
+    db: AsyncSession, user: Profile
+) -> list[JoinRequestRead]:
+    requests = (
+        await db.scalars(
+            select(JoinRequest)
+            .where(
+                JoinRequest.participant_id == user.id,
+                JoinRequest.initiated_by == "participant",
                 JoinRequest.status == "pending",
             )
             .options(selectinload(JoinRequest.participant), selectinload(JoinRequest.team))
@@ -183,17 +217,40 @@ async def respond(
         request.status = "approved"
         db.add(TeamMember(team_id=team.id, participant_id=request.participant_id))
         sync_full_status(team, len(existing_ids) + 1)
-        # A participant can only have one pending request, but clean up
-        # defensively via a bulk UPDATE (no separate SELECT round trip).
-        await db.execute(
-            update(JoinRequest)
-            .where(
-                JoinRequest.participant_id == request.participant_id,
-                JoinRequest.status == "pending",
-                JoinRequest.id != request.id,
+        # The participant may have asked (or been invited by) several teams.
+        # The first approval wins: close every other pending row and tell
+        # those teams' leaders, and clear the matching action-required
+        # notifications so no stale Approve/Reject buttons are left behind.
+        others = (
+            await db.scalars(
+                select(JoinRequest)
+                .where(
+                    JoinRequest.participant_id == request.participant_id,
+                    JoinRequest.status == "pending",
+                    JoinRequest.id != request.id,
+                )
+                .options(selectinload(JoinRequest.team))
             )
-            .values(status="rejected", responded_at=datetime.now(timezone.utc))
-        )
+        ).all()
+        closed_at = datetime.now(timezone.utc)
+        joiner = request.participant.name
+        for other in others:
+            other.status = "rejected"
+            other.responded_at = closed_at
+            if other.initiated_by == "participant":
+                note = f"{joiner} joined another team, so their request to join {other.team.name} was closed"
+            else:
+                note = f"{joiner} joined another team, so your invite to {other.team.name} was closed"
+            create_notification(db, other.team.leader_id, "team_update", note, reference_id=other.team_id)
+        if others:
+            await db.execute(
+                update(Notification)
+                .where(
+                    Notification.reference_id.in_([o.id for o in others]),
+                    Notification.type.in_(("join_request", "team_invite")),
+                )
+                .values(read=True)
+            )
         if request.initiated_by == "leader":
             create_notification(
                 db,
@@ -238,3 +295,30 @@ async def respond(
 
     await db.commit()
     return _to_read(request)
+
+
+async def cancel(db: AsyncSession, user: Profile, request_id: uuid.UUID) -> None:
+    """Undo a pending request/invite. Only whoever created it can cancel it:
+    the participant for their own request, the team's leader for an invite."""
+    request = await db.get(JoinRequest, request_id)
+    if request is None:
+        raise ApiError(404, "Join request not found")
+    if request.initiated_by == "participant":
+        if request.participant_id != user.id:
+            raise ApiError(403, "Only the participant who sent this request can cancel it")
+    else:
+        team = await db.get(Team, request.team_id)
+        if team is None or team.leader_id != user.id:
+            raise ApiError(403, "Only the team leader who sent this invite can cancel it")
+    if request.status != "pending":
+        raise ApiError(409, "This request has already been responded to")
+    # Remove the other side's now-meaningless notification too, so no
+    # Approve/Reject buttons are left pointing at a cancelled request.
+    await db.execute(
+        delete(Notification).where(
+            Notification.reference_id == request.id,
+            Notification.type.in_(("join_request", "team_invite")),
+        )
+    )
+    await db.delete(request)
+    await db.commit()

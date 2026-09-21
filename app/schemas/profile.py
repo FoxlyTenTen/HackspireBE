@@ -44,3 +44,7 @@ class ParticipantListItem(BaseModel):
         description="Whether the participant currently belongs to a team"
     )
     team_name: str | None = None
+    has_pending_invite: bool = Field(
+        default=False,
+        description="The viewing leader's team has invited this participant and they haven't responded yet",
+    )
