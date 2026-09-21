@@ -16,6 +16,7 @@ from app.db.session import get_db
 from app.dependencies import require_admin
 from app.schemas.admin import (
     AdminChangeEmailRequest,
+    AdminParticipantCreate,
     AdminParticipantsResponse,
     ImportConfirmRequest,
     ImportConfirmResponse,
@@ -23,7 +24,9 @@ from app.schemas.admin import (
     ResetPasswordResponse,
 )
 from app.schemas.common import MessageResponse, error_responses
+from app.schemas.profile import ProfileRead
 from app.services import admin_import, supabase_auth
+from app.services import admin_participants as admin_participant_service
 from app.services.audit import log_admin_action
 
 router = APIRouter(prefix="/admin/participants", tags=["Admin — Participants"])
@@ -72,6 +75,66 @@ async def import_confirm(
     db: AsyncSession = Depends(get_db),
 ) -> ImportConfirmResponse:
     return await admin_import.confirm(db, admin, body.rows)
+
+
+@router.post(
+    "",
+    response_model=ProfileRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a single participant manually",
+    description=(
+        "Same validation and invite email as one Excel row: a duplicate email or "
+        "student/staff ID is rejected with 409, otherwise the Supabase auth user and "
+        "the profile are created together with `invite_status = invited`."
+    ),
+    responses=error_responses(401, 403, 409, 422, 503),
+)
+async def create_participant(
+    body: AdminParticipantCreate,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Profile:
+    return await admin_import.create_one(db, admin, **body.model_dump())
+
+
+@router.post(
+    "/{participant_id}/resend-invite",
+    response_model=MessageResponse,
+    summary="Resend the invite email (expired or ignored invite)",
+    description=(
+        "Only for participants who haven't activated their account. Sends a fresh "
+        "invite link through Supabase Auth; an already-active participant gets 409 "
+        "(use reset-password instead)."
+    ),
+    responses=error_responses(401, 403, 404, 409),
+)
+async def resend_invite(
+    participant_id: uuid.UUID,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    profile = await admin_participant_service.resend_invite(db, admin, participant_id)
+    return MessageResponse(message=f"A new invite email was sent to {profile.email}.")
+
+
+@router.delete(
+    "/{participant_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a participant (auth user + profile)",
+    description=(
+        "Removes the Supabase auth user and the profile together, plus the "
+        "participant's notifications, join requests and team membership (the team is "
+        "notified). A team leader can't be deleted — delete the team or reassign "
+        "leadership first (409)."
+    ),
+    responses=error_responses(401, 403, 404, 409),
+)
+async def delete_participant(
+    participant_id: uuid.UUID,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await admin_participant_service.delete_participant(db, admin, participant_id)
 
 
 @router.get(

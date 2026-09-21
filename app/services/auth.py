@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -19,7 +19,12 @@ async def authenticate(
     """
     profile = await db.scalar(
         select(Profile).where(
-            or_(Profile.email == username, Profile.student_staff_id == username)
+            or_(
+                # Supabase lowercases emails, so match case-insensitively — an
+                # Excel row like "Ali@Student.edu.my" must still log in.
+                func.lower(Profile.email) == username.strip().lower(),
+                Profile.student_staff_id == username.strip(),
+            )
         )
     )
     if profile is None:
@@ -38,8 +43,17 @@ async def change_password(
 ) -> None:
     """Supabase Auth update_user() with the caller's own token."""
     await supabase_auth.update_user(access_token, password=new_password)
+    changed = False
     if user.first_login:
         user.first_login = False
+        changed = True
+    # Setting a password from the invite link proves the invite was accepted —
+    # the frontend keeps that session (no separate login), so mark it active here
+    # instead of waiting for a later password login.
+    if user.invite_status == "invited":
+        user.invite_status = "active"
+        changed = True
+    if changed:
         await db.commit()
 
 

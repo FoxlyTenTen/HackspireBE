@@ -100,6 +100,16 @@ class AdminParticipantsResponse(BaseModel):
     participants: list[ProfileRead]
 
 
+class AdminParticipantCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=3, max_length=320, examples=["student@student.edu.my"])
+    student_staff_id: str = Field(min_length=1, max_length=100)
+    reference_id: str | None = Field(default=None, max_length=100)
+    university_name: str | None = Field(default=None, max_length=200)
+    technical_skills: str | None = Field(default=None, max_length=500)
+    preferred_role: str | None = Field(default=None, max_length=100)
+
+
 class AdminChangeEmailRequest(BaseModel):
     new_email: str = Field(
         min_length=3,

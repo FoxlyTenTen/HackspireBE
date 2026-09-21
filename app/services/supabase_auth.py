@@ -210,6 +210,16 @@ async def admin_update_user_by_id(
     return response.json()
 
 
+async def admin_delete_user(user_id: str) -> bool:
+    """DELETE /admin/users/{id} — removes the auth user. Returns False if it was already gone."""
+    _require_service_role()
+    response = await _http().delete(f"/admin/users/{user_id}", headers=_service_headers())
+    if response.status_code == 404:
+        return False
+    _raise_for_status(response)
+    return True
+
+
 async def admin_get_user_by_email(email: str) -> dict[str, Any] | None:
     """Page through GET /admin/users to find a user by email (no direct lookup exists)."""
     _require_service_role()

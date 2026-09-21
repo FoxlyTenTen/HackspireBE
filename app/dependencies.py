@@ -43,7 +43,14 @@ async def get_current_user(
         if taken is None:
             profile.email = token_email
             await db.commit()
-    if profile.first_login and not request.url.path.endswith("/auth/change-password"):
+    # While a password change is forced, only the change itself and reading your
+    # own profile are allowed — the frontend needs GET /profile to see
+    # first_login and redirect to the change-password screen.
+    path = request.url.path
+    forced_change_allowed = path.endswith("/auth/change-password") or (
+        request.method == "GET" and path.endswith("/profile")
+    )
+    if profile.first_login and not forced_change_allowed:
         raise ApiError(403, "Password change required before using the API")
     return profile
 

@@ -63,7 +63,7 @@ def _parse_workbook(content: bytes) -> list[dict]:
             {
                 "row_number": row_number,
                 "name": cell(row, "name"),
-                "email": cell(row, "email"),
+                "email": (cell(row, "email") or "").lower() or None,
                 "student_staff_id": cell(row, "student_staff_id"),
                 "reference_id": cell(row, "reference_id"),
                 "university_name": cell(row, "university_name"),
@@ -76,18 +76,23 @@ def _parse_workbook(content: bytes) -> list[dict]:
     return parsed
 
 
-async def _existing_sets(db: AsyncSession) -> tuple[set[str], set[str]]:
+async def _existing_sets(db: AsyncSession) -> tuple[set[str], set[str], set[str]]:
     emails = {e.lower() for e in (await db.scalars(select(Profile.email))).all()}
     ids = {s.lower() for s in (await db.scalars(select(Profile.student_staff_id))).all()}
-    return emails, ids
+    refs = {
+        r.lower()
+        for r in (await db.scalars(select(Profile.reference_id).where(Profile.reference_id.is_not(None)))).all()
+    }
+    return emails, ids, refs
 
 
 def _validate_rows(
-    rows: list[dict], db_emails: set[str], db_ids: set[str]
+    rows: list[dict], db_emails: set[str], db_ids: set[str], db_refs: set[str]
 ) -> list[ImportRow]:
     """Flag each row individually — a bad row never rejects the whole file."""
     seen_emails: set[str] = set()
     seen_ids: set[str] = set()
+    seen_refs: set[str] = set()
     validated: list[ImportRow] = []
     for row in rows:
         issues: list[str] = []
@@ -108,6 +113,15 @@ def _validate_rows(
             if sid in seen_ids:
                 issues.append("duplicate student_staff_id within file")
             seen_ids.add(sid)
+        # profiles.reference_id is UNIQUE — catch a clash here, or the insert
+        # would fail after the invite email had already been sent.
+        ref = (row.get("reference_id") or "").lower()
+        if ref:
+            if ref in db_refs:
+                issues.append("reference_id already registered")
+            if ref in seen_refs:
+                issues.append("duplicate reference_id within file")
+            seen_refs.add(ref)
         validated.append(
             ImportRow(
                 row_number=row["row_number"],
@@ -128,8 +142,8 @@ def _validate_rows(
 async def preview(db: AsyncSession, content: bytes) -> ImportPreviewResponse:
     """Step 1: parse and validate WITHOUT writing anything."""
     rows = _parse_workbook(content)
-    db_emails, db_ids = await _existing_sets(db)
-    validated = _validate_rows(rows, db_emails, db_ids)
+    db_emails, db_ids, db_refs = await _existing_sets(db)
+    validated = _validate_rows(rows, db_emails, db_ids, db_refs)
     ok = sum(1 for r in validated if r.status == "ok")
     return ImportPreviewResponse(
         rows=validated, ok_count=ok, flagged_count=len(validated) - ok
@@ -153,7 +167,7 @@ async def confirm(
         {
             "row_number": i,
             "name": r.name.strip() or None,
-            "email": r.email.strip() or None,
+            "email": r.email.strip().lower() or None,
             "student_staff_id": r.student_staff_id.strip() or None,
             "reference_id": (r.reference_id or "").strip() or None,
             "university_name": (r.university_name or "").strip() or None,
@@ -162,8 +176,9 @@ async def confirm(
         }
         for i, r in enumerate(rows, start=1)
     ]
-    db_emails, db_ids = await _existing_sets(db)
-    validated = _validate_rows(raw, db_emails, db_ids)
+    db_emails, db_ids, db_refs = await _existing_sets(db)
+    validated = _validate_rows(raw, db_emails, db_ids, db_refs)
+    admin_id = admin.id  # read now: a rollback below would expire the ORM object
 
     created = 0
     invite_failed = 0
@@ -183,25 +198,40 @@ async def confirm(
             row.issues = [f"invite email failed: {exc.message}"]
             skipped_rows.append(row)
             continue
-        db.add(
-            Profile(
-                id=uuid.UUID(auth_user["id"]),  # profiles.id matches auth.users.id
-                name=row.name,
-                email=row.email,
-                student_staff_id=row.student_staff_id,
-                reference_id=row.reference_id,
-                university_name=row.university_name,
-                technical_skills=row.technical_skills,
-                preferred_role=row.preferred_role,
-                role="participant",
-                first_login=False,  # they set their own password via the invite link
-                invite_status="invited",
+        try:
+            db.add(
+                Profile(
+                    id=uuid.UUID(auth_user["id"]),  # profiles.id matches auth.users.id
+                    name=row.name,
+                    email=row.email,
+                    student_staff_id=row.student_staff_id,
+                    reference_id=row.reference_id,
+                    university_name=row.university_name,
+                    technical_skills=row.technical_skills,
+                    preferred_role=row.preferred_role,
+                    role="participant",
+                    first_login=False,  # they set their own password via the invite link
+                    invite_status="invited",
+                )
             )
-        )
+            # Commit per row so one bad row can't roll back profiles whose
+            # invite emails have already gone out.
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            try:
+                await supabase_auth.admin_delete_user(auth_user["id"])  # don't leave a login with no profile
+            except ApiError:
+                pass
+            invite_failed += 1
+            row.status = "flagged"
+            row.issues = ["could not save this participant — nothing was created"]
+            skipped_rows.append(row)
+            continue
         created += 1
     log_admin_action(
         db,
-        admin.id,
+        admin_id,
         "participant_imported",
         target_table="profiles",
         details=(
@@ -216,3 +246,71 @@ async def confirm(
         invite_failed=invite_failed,
         skipped_rows=skipped_rows,
     )
+
+
+async def create_one(
+    db: AsyncSession,
+    admin: Profile,
+    *,
+    name: str,
+    email: str,
+    student_staff_id: str,
+    reference_id: str | None = None,
+    university_name: str | None = None,
+    technical_skills: str | None = None,
+    preferred_role: str | None = None,
+) -> Profile:
+    """Add a single participant by hand: same validation and Supabase invite
+    email as one Excel row, and the auth user + profile are created together."""
+    raw = {
+        "row_number": 1,
+        "name": name.strip() or None,
+        "email": email.strip().lower() or None,
+        "student_staff_id": student_staff_id.strip() or None,
+        "reference_id": (reference_id or "").strip() or None,
+        "university_name": (university_name or "").strip() or None,
+        "technical_skills": (technical_skills or "").strip() or None,
+        "preferred_role": (preferred_role or "").strip() or None,
+    }
+    db_emails, db_ids, db_refs = await _existing_sets(db)
+    row = _validate_rows([raw], db_emails, db_ids, db_refs)[0]
+    if row.status != "ok":
+        raise ApiError(409, "; ".join(row.issues))
+    try:
+        auth_user = await supabase_auth.invite_user_by_email(
+            row.email, data={"name": row.name, "student_staff_id": row.student_staff_id}
+        )
+    except ApiError as exc:
+        raise ApiError(503, f"Invite email failed: {exc.message}")
+    profile = Profile(
+        id=uuid.UUID(auth_user["id"]),  # profiles.id matches auth.users.id
+        name=row.name,
+        email=row.email,
+        student_staff_id=row.student_staff_id,
+        reference_id=row.reference_id,
+        university_name=row.university_name,
+        technical_skills=row.technical_skills,
+        preferred_role=row.preferred_role,
+        role="participant",
+        first_login=False,
+        invite_status="invited",
+    )
+    db.add(profile)
+    log_admin_action(
+        db,
+        admin.id,
+        "participant_created",
+        target_table="profiles",
+        target_id=profile.id,
+        details=row.email,
+    )
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        try:
+            await supabase_auth.admin_delete_user(auth_user["id"])  # don't leave a login with no profile
+        except ApiError:
+            pass
+        raise ApiError(409, "Could not save this participant — nothing was created")
+    return profile
