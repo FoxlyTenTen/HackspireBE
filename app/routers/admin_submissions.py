@@ -113,5 +113,6 @@ async def update_deadline(
         countdown_description=row.countdown_description,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
+        team_formation_deadline_at=row.team_formation_deadline_at,
         updated_at=row.updated_at,
     )

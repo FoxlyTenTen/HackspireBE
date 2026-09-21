@@ -21,6 +21,7 @@ Round = Literal[1, 2]
 class _DeadlineSnapshot:
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
+    team_formation_deadline_at: datetime | None
     fetched_at: float
 
 
@@ -89,6 +90,7 @@ async def _get_deadline_snapshot(db: AsyncSession) -> _DeadlineSnapshot:
     _deadline_cache = _DeadlineSnapshot(
         submission_deadline_at=settings_row.submission_deadline_at,
         round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
+        team_formation_deadline_at=settings_row.team_formation_deadline_at,
         fetched_at=now,
     )
     return _deadline_cache
@@ -103,6 +105,12 @@ async def ensure_deadline_open(db: AsyncSession, round: Round) -> None:
     )
     if deadline is not None and datetime.now(timezone.utc) > _as_utc(deadline):
         raise ApiError(409, f"The round {round} submission deadline has passed")
+
+
+async def ensure_team_formation_open(db: AsyncSession) -> None:
+    deadline = (await _get_deadline_snapshot(db)).team_formation_deadline_at
+    if deadline is not None and datetime.now(timezone.utc) > _as_utc(deadline):
+        raise ApiError(409, "The team formation deadline has passed")
 
 
 async def get_submission(db: AsyncSession, team_id: uuid.UUID, round: Round) -> Submission:

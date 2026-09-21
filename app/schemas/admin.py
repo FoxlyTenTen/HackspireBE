@@ -179,11 +179,16 @@ class DeadlineUpdate(BaseModel):
     )
 
 
+class TeamFormationDeadlineUpdate(BaseModel):
+    team_formation_deadline_at: datetime = Field(examples=["2026-09-12T12:00:00+08:00"])
+
+
 class EventSettingsRead(BaseModel):
     countdown_at: datetime | None
     countdown_description: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
+    team_formation_deadline_at: datetime | None
     updated_at: datetime
 
 

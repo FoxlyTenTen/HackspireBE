@@ -9,6 +9,7 @@ from app.core.errors import ApiError
 from app.db.models import JoinRequest, Notification, Profile, Team, TeamMember
 from app.schemas.join_request import JoinRequestRead
 from app.services.notifications import create_notification, create_notifications
+from app.services.submissions import ensure_team_formation_open
 from app.services.teams import (
     ensure_unlocked,
     get_membership,
@@ -37,6 +38,7 @@ async def create_request(
 ) -> JoinRequest:
     if user.role != "participant":
         raise ApiError(403, "Only participants can request to join a team")
+    await ensure_team_formation_open(db)
     if await get_membership(db, user.id) is not None:
         raise ApiError(409, "You already belong to a team")
     team = await get_team_or_404(db, team_id, for_update=True)
@@ -77,6 +79,7 @@ async def create_invite(
     db: AsyncSession, leader: Profile, team_id: uuid.UUID, participant_id: uuid.UUID
 ) -> JoinRequest:
     """Leader invites an unassigned participant; the participant must accept."""
+    await ensure_team_formation_open(db)
     team = await get_team_or_404(db, team_id, for_update=True)
     ensure_unlocked(team)
     target = await db.get(Profile, participant_id)
@@ -172,6 +175,7 @@ async def list_sent_by_participant(
 async def respond(
     db: AsyncSession, user: Profile, request_id: uuid.UUID, decision: str
 ) -> JoinRequestRead:
+    await ensure_team_formation_open(db)
     request = await db.scalar(
         select(JoinRequest)
         .where(JoinRequest.id == request_id)

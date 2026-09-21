@@ -79,6 +79,7 @@ class EventInfoResponse(BaseModel):
     countdown_description: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
+    team_formation_deadline_at: datetime | None
     timeline: list[TimelineItemRead]
     sponsors: list[dict]
     prize_pool: dict

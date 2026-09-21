@@ -14,6 +14,7 @@ from app.schemas.team import (
     TeamUpdate,
 )
 from app.services.notifications import create_notification, create_notifications
+from app.services.submissions import ensure_team_formation_open
 
 MAX_CAPACITY = 5
 
@@ -134,6 +135,7 @@ async def team_detail(db: AsyncSession, team_id: uuid.UUID, viewer: Profile) -> 
 
 
 async def create_team(db: AsyncSession, user: Profile, data: TeamCreate) -> Team:
+    await ensure_team_formation_open(db)
     if await get_membership(db, user.id) is not None:
         raise ApiError(409, "You already belong to a team")
     existing = await db.scalar(select(Team).where(Team.name == data.name))
@@ -162,6 +164,7 @@ async def update_team(db: AsyncSession, team: Team, data: TeamUpdate) -> Team:
         await db.commit()
         return team
 
+    await ensure_team_formation_open(db)
     ensure_unlocked(team)
     count = await member_count(db, team.id)
     if data.name is not None and data.name != team.name:
@@ -184,6 +187,7 @@ async def update_team(db: AsyncSession, team: Team, data: TeamUpdate) -> Team:
 
 async def delete_team(db: AsyncSession, team: Team) -> None:
     """Leader's way of leaving — leadership never transfers."""
+    await ensure_team_formation_open(db)
     ensure_unlocked(team)
     await _delete_team_row(db, team)
     await db.commit()
@@ -202,6 +206,7 @@ async def _delete_team_row(db: AsyncSession, team: Team) -> None:
 async def remove_member(
     db: AsyncSession, team: Team, participant_id: uuid.UUID
 ) -> None:
+    await ensure_team_formation_open(db)
     ensure_unlocked(team)
     if participant_id == team.leader_id:
         raise ApiError(400, "The leader cannot be removed — delete the team instead")
@@ -227,6 +232,7 @@ async def remove_member(
 
 async def leave_team(db: AsyncSession, team: Team, user: Profile) -> None:
     """Non-leader member leaves individually — slot reopens, team unaffected."""
+    await ensure_team_formation_open(db)
     ensure_unlocked(team)
     if team.leader_id == user.id:
         raise ApiError(400, "The leader cannot leave — delete the team instead")

@@ -12,6 +12,7 @@ from app.dependencies import require_admin
 from app.schemas.admin import (
     AuditLogRead,
     EventSettingsRead,
+    TeamFormationDeadlineUpdate,
     TimelineImportConfirmRequest,
     TimelineImportConfirmResponse,
     TimelineImportPreviewResponse,
@@ -58,6 +59,35 @@ async def update_countdown(
         countdown_description=row.countdown_description,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
+        team_formation_deadline_at=row.team_formation_deadline_at,
+        updated_at=row.updated_at,
+    )
+
+
+@router.patch(
+    "/event/team-formation-deadline",
+    response_model=EventSettingsRead,
+    summary="Set or update the team-formation deadline",
+    description=(
+        "After this moment participants can no longer create teams, request/invite, "
+        "answer requests, leave, or edit team membership. Admin actions are unaffected."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def update_team_formation_deadline(
+    body: TeamFormationDeadlineUpdate,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EventSettingsRead:
+    row = await content_service.set_team_formation_deadline(
+        db, admin, body.team_formation_deadline_at
+    )
+    return EventSettingsRead(
+        countdown_at=row.countdown_at,
+        countdown_description=row.countdown_description,
+        submission_deadline_at=row.submission_deadline_at,
+        round2_submission_deadline_at=row.round2_submission_deadline_at,
+        team_formation_deadline_at=row.team_formation_deadline_at,
         updated_at=row.updated_at,
     )
 
