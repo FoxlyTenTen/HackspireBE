@@ -77,7 +77,8 @@ async def get_team(
     description=(
         "Update name, capacity (max 5, never below the current member count) or "
         "status. Status flips to `full` automatically when the team fills up. "
-        "Blocked once the team is locked by admin approval."
+        "Name/capacity/status are blocked once the team is locked by admin "
+        "approval; project_title, preferred_roles and remarks stay editable."
     ),
     responses=error_responses(400, 401, 403, 404, 409, 422),
 )

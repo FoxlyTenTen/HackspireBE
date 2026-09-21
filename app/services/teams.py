@@ -78,6 +78,9 @@ async def list_teams(db: AsyncSession, search: str | None) -> list[TeamListItem]
             member_count=len(t.members),
             capacity=t.capacity,
             status=t.status,
+            project_title=t.project_title,
+            preferred_roles=t.preferred_roles or [],
+            remarks=t.remarks,
         )
         for t in teams
     ]
@@ -111,6 +114,9 @@ async def team_detail(db: AsyncSession, team_id: uuid.UUID) -> TeamRead:
         approval_status=team.approval_status,
         admin_note=team.admin_note,
         locked=team.locked,
+        project_title=team.project_title,
+        preferred_roles=team.preferred_roles or [],
+        remarks=team.remarks,
         created_at=team.created_at,
         member_count=len(members),
         members=members,
@@ -134,6 +140,18 @@ async def create_team(db: AsyncSession, user: Profile, data: TeamCreate) -> Team
 
 
 async def update_team(db: AsyncSession, team: Team, data: TeamUpdate) -> Team:
+    # Project title / roles / remarks are descriptive, so the leader can keep
+    # editing them after approval locks the team; name/capacity/status can't.
+    if data.project_title is not None:
+        team.project_title = data.project_title.strip() or None
+    if data.preferred_roles is not None:
+        team.preferred_roles = list(dict.fromkeys(data.preferred_roles))
+    if data.remarks is not None:
+        team.remarks = data.remarks.strip() or None
+    if data.name is None and data.capacity is None and data.status is None:
+        await db.commit()
+        return team
+
     ensure_unlocked(team)
     count = await member_count(db, team.id)
     if data.name is not None and data.name != team.name:

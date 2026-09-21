@@ -27,6 +27,8 @@ class TimelineItemRead(BaseModel):
     zoom_link: str | None
     material_file_url: str | None
     material_file_name: str | None
+    hide_zoom_link: bool
+    recording_url: str | None
 
 
 class TimelineItemWrite(BaseModel):
@@ -47,6 +49,8 @@ class TimelineItemWrite(BaseModel):
         default=None, description="Pass through unchanged — set via PATCH /admin/event/timeline/{id}"
     )
     material_file_name: str | None = Field(default=None)
+    hide_zoom_link: bool = Field(default=False)
+    recording_url: str | None = Field(default=None)
 
 
 class TimelineUpdate(BaseModel):

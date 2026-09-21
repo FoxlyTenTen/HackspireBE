@@ -84,7 +84,9 @@ async def update_timeline(
     description=(
         "Partial update of one timeline item — only the fields sent are changed. "
         "Optionally attach/replace a material file, or set remove_material=true "
-        "to detach the existing one. Sending zoom_link as an empty string clears it."
+        "to detach the existing one. Sending zoom_link or recording_url as an "
+        "empty string clears it. hide_zoom_link only flags the session — the "
+        "participant page decides not to show the link."
     ),
     responses=error_responses(400, 401, 403, 404, 422),
 )
@@ -103,6 +105,8 @@ async def update_timeline_item(
     remarks: str | None = Form(default=None),
     order_index: int | None = Form(default=None),
     zoom_link: str | None = Form(default=None),
+    hide_zoom_link: bool | None = Form(default=None),
+    recording_url: str | None = Form(default=None),
     remove_material: bool = Form(default=False),
     material: UploadFile | None = File(default=None, description="Optional material file to attach"),
     admin: Profile = Depends(require_admin),
@@ -132,6 +136,8 @@ async def update_timeline_item(
         remarks=remarks,
         order_index=order_index,
         zoom_link=zoom_link,
+        hide_zoom_link=hide_zoom_link,
+        recording_url=recording_url,
         material_file=material_file,
         remove_material=remove_material,
     )

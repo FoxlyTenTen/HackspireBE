@@ -151,6 +151,8 @@ async def replace_timeline(
             zoom_link=item.zoom_link,
             material_file_url=item.material_file_url,
             material_file_name=item.material_file_name,
+            hide_zoom_link=item.hide_zoom_link,
+            recording_url=item.recording_url,
         )
         for item in items
     ]
@@ -191,6 +193,8 @@ async def update_timeline_item(
     remarks: str | None = None,
     order_index: int | None = None,
     zoom_link: str | None = None,
+    hide_zoom_link: bool | None = None,
+    recording_url: str | None = None,
     material_file: tuple[str, str] | None = None,
     remove_material: bool = False,
 ) -> TimelineItem:
@@ -221,6 +225,10 @@ async def update_timeline_item(
         item.order_index = order_index
     if zoom_link is not None:
         item.zoom_link = zoom_link
+    if hide_zoom_link is not None:
+        item.hide_zoom_link = hide_zoom_link
+    if recording_url is not None:
+        item.recording_url = recording_url.strip() or None
 
     if material_file is not None:
         old_url = item.material_file_url

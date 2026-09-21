@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -56,6 +56,10 @@ class Team(Base):
     approval_status: Mapped[str] = mapped_column(Text, default="pending")
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    project_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Roles the team still needs, a subset of the frontend's ROLE_OPTIONS.
+    preferred_roles: Mapped[list[str]] = mapped_column(JSON, default=list)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     leader: Mapped[Profile] = relationship(foreign_keys=[leader_id])
@@ -179,6 +183,9 @@ class TimelineItem(Base):
     zoom_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     material_file_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     material_file_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Participant page hides the Zoom link when set; the API still returns it.
+    hide_zoom_link: Mapped[bool] = mapped_column(Boolean, default=False)
+    recording_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Finalist(Base):

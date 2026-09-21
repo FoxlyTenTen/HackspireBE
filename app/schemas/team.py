@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 TeamStatus = Literal["open", "looking_for_teammates", "closed", "full"]
 ApprovalStatus = Literal["pending", "approved", "rejected"]
+# Mirrors ROLE_OPTIONS in lumina-frontend/src/constants/roles.ts.
+PreferredRole = Literal["Front-end", "Back-end", "AI/ML", "Data Science", "Project Manager"]
 
 
 class TeamCreate(BaseModel):
@@ -22,6 +24,11 @@ class TeamUpdate(BaseModel):
     status: Literal["open", "looking_for_teammates", "closed"] | None = Field(
         default=None, description="'full' is set automatically when the team fills up"
     )
+    project_title: str | None = Field(default=None, max_length=150)
+    preferred_roles: list[PreferredRole] | None = Field(
+        default=None, description="Roles the team still needs; replaces the whole list"
+    )
+    remarks: str | None = Field(default=None, max_length=1000)
 
 
 class TeamMemberRead(BaseModel):
@@ -39,6 +46,9 @@ class TeamListItem(BaseModel):
     member_count: int
     capacity: int
     status: TeamStatus
+    project_title: str | None
+    preferred_roles: list[str]
+    remarks: str | None
 
 
 class TeamRead(BaseModel):
@@ -53,6 +63,9 @@ class TeamRead(BaseModel):
     approval_status: ApprovalStatus
     admin_note: str | None
     locked: bool
+    project_title: str | None
+    preferred_roles: list[str]
+    remarks: str | None
     created_at: datetime
     member_count: int
     members: list[TeamMemberRead]
