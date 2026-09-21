@@ -310,7 +310,7 @@ async def put_finalists(
             db,
             admin,
             "Finalists Announced",
-            "The Round 2 finalist list has been updated — check the Results page for the full list.",
+            "The Finalist teams have been updated — check the Nottification page to see whether your team are selected or not.",
             image_url=None,
         )
     await db.commit()
