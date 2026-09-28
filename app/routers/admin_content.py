@@ -24,6 +24,7 @@ from app.schemas.event import (
     CountdownUpdate,
     FinalistRead,
     FinalistsPut,
+    LandingCountdownUpdate,
     MaterialCategory,
     MaterialRead,
     TimelineItemRead,
@@ -54,14 +55,29 @@ async def update_countdown(
     row = await content_service.set_countdown(
         db, admin, body.countdown_at, body.countdown_description
     )
-    return EventSettingsRead(
-        countdown_at=row.countdown_at,
-        countdown_description=row.countdown_description,
-        submission_deadline_at=row.submission_deadline_at,
-        round2_submission_deadline_at=row.round2_submission_deadline_at,
-        team_formation_deadline_at=row.team_formation_deadline_at,
-        updated_at=row.updated_at,
+    return _to_event_settings_read(row)
+
+
+@router.patch(
+    "/event/landing-countdown",
+    response_model=EventSettingsRead,
+    summary="Update the public marketing landing page's countdown",
+    description=(
+        "Separate from /event/countdown — this targets the standalone marketing "
+        "site at the apex domain (read with no auth via GET /public/landing-countdown), "
+        "not the authenticated app's Dashboard widget."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def update_landing_countdown(
+    body: LandingCountdownUpdate,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EventSettingsRead:
+    row = await content_service.set_landing_countdown(
+        db, admin, body.landing_countdown_at, body.landing_countdown_label
     )
+    return _to_event_settings_read(row)
 
 
 @router.patch(
@@ -82,9 +98,15 @@ async def update_team_formation_deadline(
     row = await content_service.set_team_formation_deadline(
         db, admin, body.team_formation_deadline_at
     )
+    return _to_event_settings_read(row)
+
+
+def _to_event_settings_read(row) -> EventSettingsRead:
     return EventSettingsRead(
         countdown_at=row.countdown_at,
         countdown_description=row.countdown_description,
+        landing_countdown_at=row.landing_countdown_at,
+        landing_countdown_label=row.landing_countdown_label,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
         team_formation_deadline_at=row.team_formation_deadline_at,

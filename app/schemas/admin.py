@@ -196,6 +196,8 @@ class TeamFormationDeadlineUpdate(BaseModel):
 class EventSettingsRead(BaseModel):
     countdown_at: datetime | None
     countdown_description: str | None
+    landing_countdown_at: datetime | None
+    landing_countdown_label: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
     team_formation_deadline_at: datetime | None

@@ -43,6 +43,8 @@ async def event_info(db: AsyncSession) -> EventInfoResponse:
         venue=EVENT_INFO["venue"],
         countdown_at=settings_row.countdown_at,
         countdown_description=settings_row.countdown_description,
+        landing_countdown_at=settings_row.landing_countdown_at,
+        landing_countdown_label=settings_row.landing_countdown_label,
         submission_deadline_at=settings_row.submission_deadline_at,
         round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
         team_formation_deadline_at=settings_row.team_formation_deadline_at,
@@ -125,6 +127,24 @@ async def set_submission_deadline(
     settings_row.updated_at = datetime.now(timezone.utc)
     log_admin_action(
         db, admin.id, f"round{round}_submission_deadline_updated", target_table="event_settings"
+    )
+    await db.commit()
+    invalidate_event_settings_cache()
+    return settings_row
+
+
+async def set_landing_countdown(
+    db: AsyncSession,
+    admin: Profile,
+    landing_countdown_at: datetime,
+    landing_countdown_label: str | None = None,
+):
+    settings_row = await get_event_settings(db)
+    settings_row.landing_countdown_at = landing_countdown_at
+    settings_row.landing_countdown_label = landing_countdown_label
+    settings_row.updated_at = datetime.now(timezone.utc)
+    log_admin_action(
+        db, admin.id, "landing_countdown_updated", target_table="event_settings", target_id=None
     )
     await db.commit()
     invalidate_event_settings_cache()

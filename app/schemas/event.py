@@ -71,12 +71,25 @@ class CountdownUpdate(BaseModel):
     )
 
 
+class LandingCountdownUpdate(BaseModel):
+    landing_countdown_at: datetime = Field(
+        description="Target date/time for the public marketing landing page's countdown",
+        examples=["2026-09-12T09:00:00+08:00"],
+    )
+    landing_countdown_label: str | None = Field(
+        default=None,
+        examples=["Until Doors Open"],
+    )
+
+
 class EventInfoResponse(BaseModel):
     name: str
     tagline: str
     venue: str
     countdown_at: datetime | None
     countdown_description: str | None
+    landing_countdown_at: datetime | None
+    landing_countdown_label: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
     team_formation_deadline_at: datetime | None

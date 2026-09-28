@@ -152,6 +152,14 @@ class EventSettings(Base):
         DateTime(timezone=True), nullable=True
     )
     countdown_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Separate countdown shown on the public marketing landing page
+    # (hackspirelumina.com) — distinct from countdown_at, which drives the
+    # authenticated app's Dashboard widget. Read with no auth via GET
+    # /public/landing-countdown.
+    landing_countdown_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    landing_countdown_label: Mapped[str | None] = mapped_column(Text, nullable=True)
     submission_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

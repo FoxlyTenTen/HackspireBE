@@ -22,6 +22,7 @@ from app.routers import (
     notifications,
     participants,
     profile,
+    public,
     submissions,
     teams,
 )
@@ -100,6 +101,7 @@ async def validation_error_handler(
 API_PREFIX = "/api/v1"
 
 app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(public.router, prefix=API_PREFIX)
 app.include_router(content.router, prefix=API_PREFIX)
 app.include_router(participants.router, prefix=API_PREFIX)
 app.include_router(profile.router, prefix=API_PREFIX)
