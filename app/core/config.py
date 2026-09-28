@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +36,18 @@ class Settings(BaseSettings):
     supabase_storage_bucket_announcements: str = "announcement-images"
 
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    # Brevo Transactional API — an alternative to Supabase's own
+    # SMTP-triggered mailer for auth emails (invite / reset / email-change).
+    # Supabase's own mailer keeps working unchanged unless
+    # use_brevo_transactional_email is explicitly turned on; flipping it back
+    # off instantly reverts to that default path with no redeploy of code.
+    # `validation_alias="SMTP_API"` matches the .env var name already set up
+    # for this — the Brevo Transactional API key, NOT the SMTP key used in
+    # Supabase's own SMTP settings (those are two different Brevo keys).
+    brevo_api_key: str = Field(default="", validation_alias="SMTP_API")
+    brevo_invite_template_id: int | None = None
+    use_brevo_transactional_email: bool = False
 
     @property
     def sqlalchemy_database_url(self) -> str:

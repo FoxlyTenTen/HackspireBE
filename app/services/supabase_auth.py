@@ -168,6 +168,30 @@ async def invite_user_by_email(email: str, data: dict[str, Any] | None = None) -
     return response.json()
 
 
+async def generate_link(
+    type_: str, email: str, *, data: dict[str, Any] | None = None, redirect_to: str | None = None
+) -> dict[str, Any]:
+    """POST /admin/generate_link — creates the same kind of action link
+    invite_user_by_email()/reset_password_for_email() do, but does NOT send
+    any email itself. For type="invite" this also creates the auth user (if
+    they don't already exist), same as invite_user_by_email. Used when we
+    want to send the email ourselves via Brevo's Transactional API instead
+    of Supabase's own mailer — see services/invite_email.py.
+    """
+    _require_service_role()
+    body: dict[str, Any] = {"type": type_, "email": email}
+    if data is not None:
+        body["data"] = data
+    response = await _http().post(
+        "/admin/generate_link",
+        params={"redirect_to": redirect_to} if redirect_to else {},
+        headers=_service_headers(),
+        json=body,
+    )
+    _raise_for_status(response)
+    return response.json()
+
+
 async def admin_create_user(
     email: str, password: str, *, email_confirm: bool = True
 ) -> dict[str, Any]:

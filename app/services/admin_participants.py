@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.db.models import JoinRequest, Notification, Profile, Submission, Team, TeamMember
-from app.services import supabase_auth
+from app.services import invite_email, supabase_auth
 from app.services.audit import log_admin_action
 from app.services.notifications import create_notifications
 from app.services.teams import sync_full_status
@@ -27,7 +27,7 @@ async def resend_invite(db: AsyncSession, admin: Profile, participant_id: uuid.U
             "This participant already activated their account — use Reset PW if they are locked out",
         )
     try:
-        auth_user = await supabase_auth.invite_user_by_email(
+        auth_user = await invite_email.send_invite(
             profile.email, data={"name": profile.name, "student_staff_id": profile.student_staff_id}
         )
     except ApiError as exc:

@@ -77,6 +77,9 @@ jobs:
             echo "SUPABASE_JWT_SECRET: \"${{ secrets.SUPABASE_JWT_SECRET }}\""
             echo "FRONTEND_URL: \"${{ secrets.FRONTEND_URL }}\""
             echo "PARTICIPANT_CAP: \"${{ secrets.PARTICIPANT_CAP }}\""
+            echo "SMTP_API: \"${{ secrets.SMTP_API }}\""
+            echo "BREVO_INVITE_TEMPLATE_ID: \"${{ secrets.BREVO_INVITE_TEMPLATE_ID }}\""
+            echo "USE_BREVO_TRANSACTIONAL_EMAIL: \"${{ secrets.USE_BREVO_TRANSACTIONAL_EMAIL }}\""
           } > env-vars.yaml
 
       # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's

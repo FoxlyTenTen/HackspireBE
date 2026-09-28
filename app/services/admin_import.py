@@ -13,7 +13,7 @@ from app.schemas.admin import (
     ImportPreviewResponse,
     ImportRow,
 )
-from app.services import supabase_auth
+from app.services import invite_email, supabase_auth
 from app.services.audit import log_admin_action
 
 REQUIRED_COLUMNS = ("name", "email", "student_staff_id")
@@ -188,7 +188,7 @@ async def confirm(
             skipped_rows.append(row)
             continue
         try:
-            auth_user = await supabase_auth.invite_user_by_email(
+            auth_user = await invite_email.send_invite(
                 row.email,
                 data={"name": row.name, "student_staff_id": row.student_staff_id},
             )
@@ -277,7 +277,7 @@ async def create_one(
     if row.status != "ok":
         raise ApiError(409, "; ".join(row.issues))
     try:
-        auth_user = await supabase_auth.invite_user_by_email(
+        auth_user = await invite_email.send_invite(
             row.email, data={"name": row.name, "student_staff_id": row.student_staff_id}
         )
     except ApiError as exc:
