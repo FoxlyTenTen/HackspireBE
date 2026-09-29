@@ -18,6 +18,9 @@ from app.schemas.admin import (
     AdminChangeEmailRequest,
     AdminParticipantCreate,
     AdminParticipantsResponse,
+    BulkDeleteFailure,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
     ImportConfirmRequest,
     ImportConfirmResponse,
     ImportPreviewResponse,
@@ -135,6 +138,35 @@ async def delete_participant(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await admin_participant_service.delete_participant(db, admin, participant_id)
+
+
+@router.post(
+    "/bulk-delete",
+    response_model=BulkDeleteResponse,
+    summary="Delete multiple participants at once",
+    description=(
+        "Same rules as single delete (auth user + profile + notifications/join "
+        "requests/team membership removed), applied to each id in the list. One "
+        "failure (e.g. a team leader) is reported per-id, not fatal to the rest "
+        "of the batch."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def bulk_delete_participants(
+    body: BulkDeleteRequest,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BulkDeleteResponse:
+    deleted, failures = await admin_participant_service.bulk_delete_participants(
+        db, admin, body.participant_ids
+    )
+    return BulkDeleteResponse(
+        deleted=deleted,
+        failed=[
+            BulkDeleteFailure(participant_id=pid, name=name, reason=reason)
+            for pid, name, reason in failures
+        ],
+    )
 
 
 @router.get(

@@ -118,6 +118,24 @@ class AdminChangeEmailRequest(BaseModel):
     )
 
 
+class BulkDeleteRequest(BaseModel):
+    participant_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class BulkDeleteFailure(BaseModel):
+    participant_id: uuid.UUID
+    name: str | None
+    reason: str
+
+
+class BulkDeleteResponse(BaseModel):
+    deleted: int
+    failed: list[BulkDeleteFailure] = Field(
+        default_factory=list,
+        description="Participants that could not be deleted (e.g. a team leader) with the reason — one bad row never blocks the rest of the batch",
+    )
+
+
 class ResetPasswordResponse(BaseModel):
     participant_id: uuid.UUID
     temporary_password: str = Field(

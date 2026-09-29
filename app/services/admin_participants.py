@@ -48,6 +48,25 @@ async def resend_invite(db: AsyncSession, admin: Profile, participant_id: uuid.U
     return profile
 
 
+async def bulk_delete_participants(
+    db: AsyncSession, admin: Profile, participant_ids: list[uuid.UUID]
+) -> tuple[int, list[tuple[uuid.UUID, str | None, str]]]:
+    """Delete several participants one at a time so one failure (e.g. a team
+    leader) doesn't block the rest of the batch. Returns (deleted_count, failures)."""
+    deleted = 0
+    failures: list[tuple[uuid.UUID, str | None, str]] = []
+    for participant_id in participant_ids:
+        name = None
+        try:
+            profile = await db.get(Profile, participant_id)
+            name = profile.name if profile is not None else None
+            await delete_participant(db, admin, participant_id)
+            deleted += 1
+        except ApiError as exc:
+            failures.append((participant_id, name, exc.message))
+    return deleted, failures
+
+
 async def delete_participant(db: AsyncSession, admin: Profile, participant_id: uuid.UUID) -> None:
     """Remove a participant from Supabase Auth and the database together."""
     profile = await _get_participant(db, participant_id)
