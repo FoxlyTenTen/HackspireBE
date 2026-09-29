@@ -23,7 +23,7 @@ async def authenticate(
                 # Supabase lowercases emails, so match case-insensitively — an
                 # Excel row like "Ali@Student.edu.my" must still log in.
                 func.lower(Profile.email) == username.strip().lower(),
-                Profile.student_staff_id == username.strip(),
+                func.lower(Profile.student_staff_id) == username.strip().lower(),
             )
         )
     )
