@@ -12,7 +12,11 @@ from app.core.errors import ApiError
 from app.db.models import EventSettings, Finalist, Submission, Team
 
 GITHUB_RE = re.compile(r"^https://(www\.)?github\.com/[\w.-]+/[\w.-]+(/.*)?$")
-URL_RE = re.compile(r"^https://\S+$")
+# Requires a well-formed host (at least one dot, e.g. drive.google.com) —
+# tighter than "any non-whitespace after https://" without an allow-list
+# (legitimate links are varied: Drive, Canva, Figma, etc.), and without
+# adding any server-side fetch of these URLs (none exists, none needed).
+URL_RE = re.compile(r"^https://[\w-]+(\.[\w-]+)+(:\d+)?(/\S*)?$")
 
 Round = Literal[1, 2]
 

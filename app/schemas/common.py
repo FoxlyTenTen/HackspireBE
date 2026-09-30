@@ -6,6 +6,7 @@ _ERROR_DESCRIPTIONS = {
     403: "Authenticated but not allowed to perform this action",
     404: "Resource not found",
     409: "Conflict with current state (e.g. team locked or full, deadline passed)",
+    413: "Uploaded file is too large",
     422: "Request body failed validation",
     503: "Supabase Auth is not configured or unreachable",
 }

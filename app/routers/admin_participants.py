@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import ApiError
+from app.core.uploads import MAX_EXCEL_BYTES, check_upload_size
 from app.db.models import Profile
 from app.db.session import get_db
 from app.dependencies import require_admin
@@ -47,7 +48,7 @@ router = APIRouter(prefix="/admin/participants", tags=["Admin — Participants"]
         "Optional columns: `reference_id`, `university_name`, `technical_skills`, "
         "`preferred_role`."
     ),
-    responses=error_responses(400, 401, 403, 422),
+    responses=error_responses(400, 401, 403, 413, 422),
 )
 async def import_preview(
     file: UploadFile = File(description="Excel .xlsx file of participants"),
@@ -55,6 +56,7 @@ async def import_preview(
     db: AsyncSession = Depends(get_db),
 ) -> ImportPreviewResponse:
     content = await file.read()
+    check_upload_size(content, MAX_EXCEL_BYTES, "Excel file")
     return await admin_import.preview(db, content)
 
 

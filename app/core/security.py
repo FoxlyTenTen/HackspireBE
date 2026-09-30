@@ -40,6 +40,11 @@ async def decode_supabase_token(token: str) -> dict | None:
     except JWTError:
         return None
     alg = header.get("alg", "")
+    if alg not in {"HS256", "RS256", "ES256"}:
+        # Explicit allow-list — without this, an attacker-chosen alg (e.g.
+        # "none") is passed straight into jwt.decode's algorithms=[alg]
+        # below. Real Supabase tokens only ever use HS256 or RS256.
+        return None
     try:
         if alg == "HS256":
             if not settings.supabase_jwt_secret:

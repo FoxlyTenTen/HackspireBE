@@ -62,6 +62,17 @@ async def _ensure_admin_auth_user() -> uuid.UUID | None:
     if not (settings.supabase_url and settings.supabase_service_role_key):
         print("seed_admin: Supabase Auth not configured — admin login will not work yet")
         return None
+    if settings.admin_password == "admin123":
+        # Supabase IS configured here (a real deploy, not bare local dev) —
+        # the default password is meant only for running the app with no
+        # .env at all. Seeing it in a real deploy means ADMIN_PASSWORD was
+        # never overridden via the GitHub secret; warn loudly rather than
+        # silently creating a live admin account with a public, guessable
+        # password. Not a hard failure, to avoid breaking a deploy outright.
+        print(
+            "seed_admin: WARNING — ADMIN_PASSWORD is still the default value, "
+            "set a real ADMIN_PASSWORD secret before this is a production deploy"
+        )
     try:
         auth_user = await supabase_auth.admin_create_user(
             settings.admin_email, settings.admin_password, email_confirm=True

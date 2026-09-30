@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import ApiError
+from app.core.uploads import MAX_EXCEL_BYTES, MAX_IMAGE_BYTES, check_upload_size
 from app.db.models import AuditLog, Material, Profile
 from app.db.session import get_db
 from app.dependencies import require_admin
@@ -140,7 +141,7 @@ async def update_timeline(
         "empty string clears it. hide_zoom_link only flags the session — the "
         "participant page decides not to show the link."
     ),
-    responses=error_responses(400, 401, 403, 404, 422),
+    responses=error_responses(400, 401, 403, 404, 413, 422),
 )
 async def update_timeline_item(
     item_id: uuid.UUID,
@@ -169,6 +170,7 @@ async def update_timeline_item(
         content = await material.read()
         if not content:
             raise ApiError(400, "Uploaded material is empty")
+        check_upload_size(content, MAX_IMAGE_BYTES, "Material file")
         file_url = await get_materials_storage().save(material.filename, content)
         material_file = (material.filename, file_url)
     return await content_service.update_timeline_item(
@@ -203,13 +205,14 @@ async def update_timeline_item(
         "Step 1 of 2: parses the uploaded `.xlsx` and returns a per-row preview "
         "WITHOUT writing anything."
     ),
-    responses=error_responses(400, 401, 403, 422),
+    responses=error_responses(400, 401, 403, 413, 422),
 )
 async def timeline_import_preview(
     file: UploadFile = File(description="Excel .xlsx file of timeline sessions"),
     admin: Profile = Depends(require_admin),
 ) -> TimelineImportPreviewResponse:
     content = await file.read()
+    check_upload_size(content, MAX_EXCEL_BYTES, "Excel file")
     return timeline_import_service.preview(content)
 
 
@@ -274,7 +277,7 @@ async def put_winners(
     status_code=status.HTTP_201_CREATED,
     summary="Upload a material file",
     description="Stored in a public Supabase Storage bucket.",
-    responses=error_responses(400, 401, 403, 422),
+    responses=error_responses(400, 401, 403, 413, 422),
 )
 async def upload_material(
     file: UploadFile = File(description="The file to publish to participants"),
@@ -285,6 +288,7 @@ async def upload_material(
     content = await file.read()
     if not content:
         raise ApiError(400, "Uploaded file is empty")
+    check_upload_size(content, MAX_IMAGE_BYTES, "Material file")
     file_url = await get_materials_storage().save(file.filename or "material", content)
     material = Material(
         file_name=file.filename or "material",
@@ -332,7 +336,7 @@ async def delete_material(
         "Also creates an `announcement` notification for every participant. "
         "The image, if any, is uploaded as a file (not a link)."
     ),
-    responses=error_responses(400, 401, 403, 422),
+    responses=error_responses(400, 401, 403, 413, 422),
 )
 async def post_announcement(
     title: str = Form(...),
@@ -346,6 +350,7 @@ async def post_announcement(
         content = await image.read()
         if not content:
             raise ApiError(400, "Uploaded image is empty")
+        check_upload_size(content, MAX_IMAGE_BYTES, "Image")
         image_url = await get_announcements_storage().save(image.filename, content)
     return await content_service.create_announcement(db, admin, title, body, image_url)
 
@@ -355,7 +360,7 @@ async def post_announcement(
     response_model=AnnouncementRead,
     summary="Edit a posted announcement",
     description="Uploading a new image replaces the old one; the old file is deleted.",
-    responses=error_responses(400, 401, 403, 404, 422),
+    responses=error_responses(400, 401, 403, 404, 413, 422),
 )
 async def patch_announcement(
     announcement_id: uuid.UUID,
@@ -370,6 +375,7 @@ async def patch_announcement(
         content = await image.read()
         if not content:
             raise ApiError(400, "Uploaded image is empty")
+        check_upload_size(content, MAX_IMAGE_BYTES, "Image")
         existing = await content_service.get_announcement_or_404(db, announcement_id)
         old_image_url = existing.image_url
         image_url = await get_announcements_storage().save(image.filename, content)

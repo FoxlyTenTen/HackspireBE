@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
+from app.core.limiter import limiter
 from app.db.models import Profile
 from app.db.session import get_db
 from app.dependencies import bearer_scheme, get_current_user
@@ -34,7 +35,10 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     ),
     responses=error_responses(401, 422),
 )
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> LoginResponse:
+@limiter.limit("10/minute")
+async def login(
+    request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)
+) -> LoginResponse:
     profile, session = await auth_service.authenticate(db, body.username, body.password)
     return LoginResponse(
         jwt=session["access_token"],
@@ -50,7 +54,8 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Login
     summary="Exchange a refresh token for a new session",
     responses=error_responses(401, 422),
 )
-async def refresh(body: RefreshRequest) -> RefreshResponse:
+@limiter.limit("10/minute")
+async def refresh(request: Request, body: RefreshRequest) -> RefreshResponse:
     session = await supabase_auth.refresh_session(body.refresh_token)
     return RefreshResponse(
         jwt=session["access_token"], refresh_token=session["refresh_token"]
@@ -68,7 +73,8 @@ async def refresh(body: RefreshRequest) -> RefreshResponse:
     ),
     responses=error_responses(400, 422),
 )
-async def verify_otp(body: VerifyOtpRequest) -> VerifyOtpResponse:
+@limiter.limit("10/minute")
+async def verify_otp(request: Request, body: VerifyOtpRequest) -> VerifyOtpResponse:
     session = await supabase_auth.verify_otp(body.token_hash, body.type)
     return VerifyOtpResponse(
         jwt=session["access_token"], refresh_token=session["refresh_token"], type=body.type
@@ -85,7 +91,8 @@ async def verify_otp(body: VerifyOtpRequest) -> VerifyOtpResponse:
     ),
     responses=error_responses(422),
 )
-async def forgot_password(body: ForgotPasswordRequest) -> MessageResponse:
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest) -> MessageResponse:
     try:
         await supabase_auth.reset_password_for_email(body.email)
     except ApiError:

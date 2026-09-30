@@ -50,7 +50,10 @@ async def send_invite(email: str, data: dict[str, Any] | None = None) -> dict[st
         )
     action_link = link.get("action_link")
     if not action_link:
-        print(f"invite_email.send_invite: unexpected generate_link response: {link!r}")
+        # Never log `link` itself — on success it contains action_link, a
+        # live one-time login token for this user; logging it would put a
+        # working credential in Cloud Run's log viewer.
+        print(f"invite_email.send_invite: unexpected generate_link response, keys={list(link.keys())!r}")
         raise ApiError(502, "Supabase did not return a usable invite link")
 
     # Don't trust generate_link's own response shape for the id (it's
