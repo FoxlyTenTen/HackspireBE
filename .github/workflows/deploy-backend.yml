@@ -80,6 +80,9 @@ jobs:
             echo "SMTP_API: \"${{ secrets.SMTP_API }}\""
             echo "BREVO_INVITE_TEMPLATE_ID: \"${{ secrets.BREVO_INVITE_TEMPLATE_ID }}\""
             echo "USE_BREVO_TRANSACTIONAL_EMAIL: \"${{ secrets.USE_BREVO_TRANSACTIONAL_EMAIL }}\""
+            echo "BREVO_SENDER_EMAIL: \"${{ secrets.BREVO_SENDER_EMAIL }}\""
+            echo "BREVO_SENDER_NAME: \"${{ secrets.BREVO_SENDER_NAME }}\""
+            echo "CONTACT_RECIPIENT_EMAIL: \"${{ secrets.CONTACT_RECIPIENT_EMAIL }}\""
           } > env-vars.yaml
 
       # CORS_ORIGINS is a JSON array and contains commas — deploy-cloudrun's

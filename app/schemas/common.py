@@ -8,6 +8,8 @@ _ERROR_DESCRIPTIONS = {
     409: "Conflict with current state (e.g. team locked or full, deadline passed)",
     413: "Uploaded file is too large",
     422: "Request body failed validation",
+    429: "Too many requests — rate limit exceeded",
+    502: "Upstream email provider rejected or failed the send",
     503: "Supabase Auth is not configured or unreachable",
 }
 

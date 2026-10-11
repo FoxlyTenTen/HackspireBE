@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     brevo_invite_template_id: int | None = None
     use_brevo_transactional_email: bool = False
 
+    # Public landing-page "Help Desk" contact form (POST /public/contact) —
+    # sent via the same Brevo Transactional API key as above, but as a plain
+    # email (no template), since this one has no fixed Brevo template. The
+    # sender must be a domain/address verified in Brevo (Senders & IP), or
+    # Brevo rejects the send.
+    brevo_sender_email: str = "noreply@hackspirelumina.com"
+    brevo_sender_name: str = "Hackspire: Lumina"
+    contact_recipient_email: str = "hackspirelumina@gmail.com"
+
     @property
     def sqlalchemy_database_url(self) -> str:
         url = self.database_url

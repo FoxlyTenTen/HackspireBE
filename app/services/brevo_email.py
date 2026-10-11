@@ -44,3 +44,42 @@ async def send_template_email(
         except ValueError:
             detail = response.text
         raise ApiError(502, f"Brevo send failed: {detail}")
+
+
+async def send_raw_email(
+    *,
+    to_email: str,
+    to_name: str,
+    subject: str,
+    html_content: str,
+    reply_to_email: str | None = None,
+    reply_to_name: str | None = None,
+) -> None:
+    """Plain (non-template) transactional send — for one-off emails like the
+    landing page's contact form, which has no fixed Brevo template."""
+    if not settings.brevo_api_key:
+        raise ApiError(503, "Brevo API key is not configured (SMTP_API)")
+    payload: dict = {
+        "sender": {"email": settings.brevo_sender_email, "name": settings.brevo_sender_name},
+        "to": [{"email": to_email, "name": to_name}],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+    if reply_to_email:
+        payload["replyTo"] = {"email": reply_to_email, "name": reply_to_name or reply_to_email}
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(
+            f"{BREVO_API_BASE}/smtp/email",
+            headers={
+                "api-key": settings.brevo_api_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
+        )
+    if not response.is_success:
+        try:
+            detail = response.json().get("message", response.text)
+        except ValueError:
+            detail = response.text
+        raise ApiError(502, f"Brevo send failed: {detail}")
