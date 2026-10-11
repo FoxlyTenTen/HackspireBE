@@ -10,7 +10,8 @@ worker memory. These caps are generous for real usage, not a tight quota.
 from app.core.errors import ApiError
 
 MAX_EXCEL_BYTES = 10 * 1024 * 1024  # 10 MB — participant/timeline roster imports
-MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB — announcement images, material files
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB — announcement images
+MAX_MATERIAL_BYTES = 25 * 1024 * 1024  # 25 MB — bootcamp/material files (slide decks, PDFs)
 
 
 def check_upload_size(content: bytes, max_bytes: int, label: str) -> None:

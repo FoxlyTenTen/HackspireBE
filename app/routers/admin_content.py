@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import ApiError
-from app.core.uploads import MAX_EXCEL_BYTES, MAX_IMAGE_BYTES, check_upload_size
+from app.core.uploads import MAX_EXCEL_BYTES, MAX_IMAGE_BYTES, MAX_MATERIAL_BYTES, check_upload_size
 from app.db.models import AuditLog, Material, Profile
 from app.db.session import get_db
 from app.dependencies import require_admin
@@ -170,7 +170,7 @@ async def update_timeline_item(
         content = await material.read()
         if not content:
             raise ApiError(400, "Uploaded material is empty")
-        check_upload_size(content, MAX_IMAGE_BYTES, "Material file")
+        check_upload_size(content, MAX_MATERIAL_BYTES, "Material file")
         file_url = await get_materials_storage().save(material.filename, content)
         material_file = (material.filename, file_url)
     return await content_service.update_timeline_item(
@@ -288,7 +288,7 @@ async def upload_material(
     content = await file.read()
     if not content:
         raise ApiError(400, "Uploaded file is empty")
-    check_upload_size(content, MAX_IMAGE_BYTES, "Material file")
+    check_upload_size(content, MAX_MATERIAL_BYTES, "Material file")
     file_url = await get_materials_storage().save(file.filename or "material", content)
     material = Material(
         file_name=file.filename or "material",
