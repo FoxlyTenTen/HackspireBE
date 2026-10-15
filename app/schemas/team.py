@@ -7,7 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field
 TeamStatus = Literal["open", "looking_for_teammates", "closed", "full"]
 ApprovalStatus = Literal["pending", "approved", "rejected"]
 # Mirrors ROLE_OPTIONS in lumina-frontend/src/constants/roles.ts.
-PreferredRole = Literal["Front-end", "Back-end", "AI/ML", "Data Science", "Project Manager"]
+PreferredRole = Literal[
+    "Data Scientist",
+    "ML Engineer",
+    "Backend Developer",
+    "Frontend Developer",
+    "UI/UX & Dashboard Designer",
+    "Project Manager (PM)",
+]
 
 
 class TeamCreate(BaseModel):
