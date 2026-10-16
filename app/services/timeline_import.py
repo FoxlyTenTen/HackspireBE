@@ -86,9 +86,9 @@ def _validate_rows(rows: list[dict]) -> list[TimelineImportRow]:
         except ValueError:
             issues.append("order_index must be a number")
             order_index = idx
-        status = row.get("status") or "TBD"
-        if status not in ("TBD", "Proposed", "Confirmed", "Declined"):
-            issues.append("status must be one of TBD/Proposed/Confirmed/Declined")
+        status = row.get("status") or "Upcoming"
+        if status not in ("Upcoming", "Live", "Completed"):
+            issues.append("status must be one of Upcoming/Live/Completed")
         validated.append(
             TimelineImportRow(
                 row_number=row["row_number"],

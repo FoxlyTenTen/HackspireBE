@@ -187,8 +187,8 @@ class TimelineItem(Base):
     organization: Mapped[str | None] = mapped_column(Text, nullable=True)
     session_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     speaker_photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # TBD | Proposed | Confirmed | Declined — admin-facing
-    status: Mapped[str] = mapped_column(Text, default="TBD")
+    # Upcoming | Live | Completed — admin-facing
+    status: Mapped[str] = mapped_column(Text, default="Upcoming")
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     zoom_link: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -285,7 +285,7 @@ class TimelineImportConfirmRowIn(BaseModel):
     organization: str | None = None
     session_description: str | None = None
     speaker_photo_url: str | None = None
-    status: TimelineStatus = "TBD"
+    status: TimelineStatus = "Upcoming"
     remarks: str | None = None
     order_index: int = 0
 

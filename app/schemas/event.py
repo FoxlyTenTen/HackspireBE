@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-TimelineStatus = Literal["TBD", "Proposed", "Confirmed", "Declined"]
+TimelineStatus = Literal["Upcoming", "Live", "Completed"]
 MaterialCategory = Literal["general", "submission_template"]
 
 
@@ -41,7 +41,7 @@ class TimelineItemWrite(BaseModel):
     organization: str | None = Field(default=None, examples=["Acme Corp"])
     session_description: str | None = Field(default=None)
     speaker_photo_url: str | None = Field(default=None)
-    status: TimelineStatus = Field(default="TBD")
+    status: TimelineStatus = Field(default="Upcoming")
     remarks: str | None = Field(default=None)
     order_index: int = Field(default=0, examples=[0])
     zoom_link: str | None = Field(default=None)
