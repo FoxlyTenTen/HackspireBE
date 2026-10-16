@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     admin_student_staff_id: str = "ADMIN-001"
 
     upload_dir: str = "./uploads"
-    participant_cap: int = 150
+    participant_cap: int = 400
 
     # Supabase Storage buckets (public) — must already exist in the project.
     supabase_storage_bucket_materials: str = "materials"

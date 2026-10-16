@@ -174,7 +174,7 @@ async def bulk_delete_participants(
 @router.get(
     "",
     response_model=AdminParticipantsResponse,
-    summary="Full participant list with count vs the 150 cap",
+    summary="Full participant list with count vs the participant cap",
     description=(
         "Set `format=csv` to download the list as a CSV export instead of JSON."
     ),

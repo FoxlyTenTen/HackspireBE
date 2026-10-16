@@ -95,7 +95,7 @@ class ImportConfirmResponse(BaseModel):
 
 class AdminParticipantsResponse(BaseModel):
     count: int = Field(description="Current number of participant accounts")
-    cap: int = Field(examples=[150])
+    cap: int = Field(examples=[400])
     remaining: int
     participants: list[ProfileRead]
 
