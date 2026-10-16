@@ -48,6 +48,26 @@ async def resend_invite(db: AsyncSession, admin: Profile, participant_id: uuid.U
     return profile
 
 
+async def bulk_resend_invite(
+    db: AsyncSession, admin: Profile, participant_ids: list[uuid.UUID]
+) -> tuple[int, list[tuple[uuid.UUID, str | None, str]]]:
+    """Resend invites to several participants one at a time so one failure
+    (e.g. an already-active account) doesn't block the rest of the batch.
+    Returns (sent_count, failures)."""
+    sent = 0
+    failures: list[tuple[uuid.UUID, str | None, str]] = []
+    for participant_id in participant_ids:
+        name = None
+        try:
+            profile = await db.get(Profile, participant_id)
+            name = profile.name if profile is not None else None
+            await resend_invite(db, admin, participant_id)
+            sent += 1
+        except ApiError as exc:
+            failures.append((participant_id, name, exc.message))
+    return sent, failures
+
+
 async def bulk_delete_participants(
     db: AsyncSession, admin: Profile, participant_ids: list[uuid.UUID]
 ) -> tuple[int, list[tuple[uuid.UUID, str | None, str]]]:

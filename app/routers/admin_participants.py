@@ -22,6 +22,9 @@ from app.schemas.admin import (
     BulkDeleteFailure,
     BulkDeleteRequest,
     BulkDeleteResponse,
+    BulkResendInviteFailure,
+    BulkResendInviteRequest,
+    BulkResendInviteResponse,
     ImportConfirmRequest,
     ImportConfirmResponse,
     ImportPreviewResponse,
@@ -120,6 +123,34 @@ async def resend_invite(
 ) -> MessageResponse:
     profile = await admin_participant_service.resend_invite(db, admin, participant_id)
     return MessageResponse(message=f"A new invite email was sent to {profile.email}.")
+
+
+@router.post(
+    "/bulk-resend-invite",
+    response_model=BulkResendInviteResponse,
+    summary="Resend invite emails to multiple participants at once",
+    description=(
+        "Same rules as single resend (only participants who haven't activated their "
+        "account), applied to each id in the list. An already-active participant is "
+        "reported per-id as a failure, not fatal to the rest of the batch."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def bulk_resend_invite(
+    body: BulkResendInviteRequest,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BulkResendInviteResponse:
+    sent, failures = await admin_participant_service.bulk_resend_invite(
+        db, admin, body.participant_ids
+    )
+    return BulkResendInviteResponse(
+        sent=sent,
+        failed=[
+            BulkResendInviteFailure(participant_id=pid, name=name, reason=reason)
+            for pid, name, reason in failures
+        ],
+    )
 
 
 @router.delete(
