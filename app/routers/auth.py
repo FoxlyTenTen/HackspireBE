@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.dependencies import bearer_scheme, get_current_user
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ChangePasswordResponse,
     ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
@@ -104,11 +105,13 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest) -> Mess
 
 @router.post(
     "/change-password",
-    response_model=MessageResponse,
+    response_model=ChangePasswordResponse,
     summary="Change the current user's password",
     description=(
-        "Delegates to Supabase Auth update_user() with the caller's token and "
-        "clears the `first_login` flag."
+        "Delegates to Supabase Auth update_user() with the caller's token, "
+        "clears the `first_login` flag, then signs in with the new password "
+        "to return a fresh session — the caller's old token is revoked by "
+        "the password change, so the client must adopt these new tokens."
     ),
     responses=error_responses(401, 422),
 )
@@ -117,6 +120,12 @@ async def change_password(
     user: Profile = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    await auth_service.change_password(db, user, credentials.credentials, body.new_password)
-    return MessageResponse(message="Password changed successfully — please log in again")
+) -> ChangePasswordResponse:
+    session = await auth_service.change_password(
+        db, user, credentials.credentials, body.new_password
+    )
+    return ChangePasswordResponse(
+        jwt=session["access_token"],
+        refresh_token=session["refresh_token"],
+        message="Password changed successfully",
+    )

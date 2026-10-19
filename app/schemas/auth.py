@@ -61,3 +61,9 @@ class ForgotPasswordRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, examples=["S3cure-new-pass!"])
+
+
+class ChangePasswordResponse(BaseModel):
+    jwt: str = Field(description="Fresh access token — the caller's old one is now revoked")
+    refresh_token: str = Field(description="Fresh refresh token, paired with `jwt`")
+    message: str

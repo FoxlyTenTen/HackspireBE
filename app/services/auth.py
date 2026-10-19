@@ -40,21 +40,29 @@ async def authenticate(
 
 async def change_password(
     db: AsyncSession, user: Profile, access_token: str, new_password: str
-) -> None:
-    """Supabase Auth update_user() with the caller's own token."""
+) -> dict:
+    """Supabase Auth update_user() with the caller's own token, then an
+    immediate sign-in with the new password to mint a fresh session.
+
+    update_user() revokes the session tied to `access_token` as soon as the
+    password changes, so the caller's existing tokens are dead the instant
+    this returns — the frontend can't just keep using them (that silently
+    bounced the invite/recovery session to /login). Signing in again here
+    both proves the new password actually took and hands back tokens that
+    are still valid for the caller to adopt via supabase.auth.setSession().
+    """
     await supabase_auth.update_user(access_token, password=new_password)
     changed = False
     if user.first_login:
         user.first_login = False
         changed = True
-    # Setting a password from the invite link proves the invite was accepted —
-    # the frontend keeps that session (no separate login), so mark it active here
-    # instead of waiting for a later password login.
+    # Setting a password from the invite link proves the invite was accepted.
     if user.invite_status == "invited":
         user.invite_status = "active"
         changed = True
     if changed:
         await db.commit()
+    return await supabase_auth.sign_in_with_password(user.email, new_password)
 
 
 async def _ensure_admin_auth_user() -> uuid.UUID | None:
