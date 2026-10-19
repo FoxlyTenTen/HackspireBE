@@ -30,9 +30,10 @@ async def send_invite(email: str, data: dict[str, Any] | None = None) -> dict[st
     if not settings.use_brevo_transactional_email:
         return await supabase_auth.invite_user_by_email(email, data=data)
 
+    link_type = "invite"
     try:
         link = await supabase_auth.generate_link(
-            "invite", email, data=data, redirect_to=f"{settings.frontend_url}/accept-invite"
+            link_type, email, data=data, redirect_to=f"{settings.frontend_url}/accept-invite"
         )
     except ApiError as exc:
         if not _already_registered(exc.message):
@@ -45,16 +46,29 @@ async def send_invite(email: str, data: dict[str, Any] | None = None) -> dict[st
         # flow and works fine against an existing, even unconfirmed, user —
         # reset_password_for_email()/`/recover` already relies on the same
         # thing elsewhere in this codebase.
+        link_type = "recovery"
         link = await supabase_auth.generate_link(
-            "recovery", email, redirect_to=f"{settings.frontend_url}/accept-invite"
+            link_type, email, redirect_to=f"{settings.frontend_url}/accept-invite"
         )
-    action_link = link.get("action_link")
-    if not action_link:
-        # Never log `link` itself — on success it contains action_link, a
+
+    # Deliberately NOT using link["action_link"] here — it's Supabase's own
+    # hosted /auth/v1/verify URL, which consumes the one-time token on the
+    # first GET it receives. Corporate/university inboxes (Outlook Safe
+    # Links, Mimecast, Proofpoint, Barracuda) auto-prefetch every link in an
+    # incoming email to scan it, which burns the token before the real
+    # recipient ever clicks — they then land on an "expired" link. Pointing
+    # the email at our OWN frontend route with the raw token_hash instead
+    # means a prefetch just loads a static page (harmless); the token is
+    # only spent when AcceptInvite.tsx's explicit "Continue" button is
+    # clicked, which a scanner never does.
+    hashed_token = link.get("hashed_token")
+    if not hashed_token:
+        # Never log `link` itself — on success it may contain action_link, a
         # live one-time login token for this user; logging it would put a
         # working credential in Cloud Run's log viewer.
         print(f"invite_email.send_invite: unexpected generate_link response, keys={list(link.keys())!r}")
         raise ApiError(502, "Supabase did not return a usable invite link")
+    action_link = f"{settings.frontend_url}/accept-invite?token_hash={hashed_token}&type={link_type}"
 
     # Don't trust generate_link's own response shape for the id (it's
     # undocumented here and got this wrong once already — every other admin
