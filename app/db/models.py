@@ -166,6 +166,16 @@ class EventSettings(Base):
     round2_submission_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # When each round's submission form unlocks. NULL (the default) means
+    # no open-gate at all — approved teams see the form immediately, same
+    # as before this field existed. Only an explicit admin-set date locks
+    # the form until then.
+    submission_opens_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    round2_submission_opens_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     team_formation_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

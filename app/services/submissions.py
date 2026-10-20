@@ -25,6 +25,8 @@ Round = Literal[1, 2]
 class _DeadlineSnapshot:
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
+    submission_opens_at: datetime | None
+    round2_submission_opens_at: datetime | None
     team_formation_deadline_at: datetime | None
     fetched_at: float
 
@@ -94,6 +96,8 @@ async def _get_deadline_snapshot(db: AsyncSession) -> _DeadlineSnapshot:
     _deadline_cache = _DeadlineSnapshot(
         submission_deadline_at=settings_row.submission_deadline_at,
         round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
+        submission_opens_at=settings_row.submission_opens_at,
+        round2_submission_opens_at=settings_row.round2_submission_opens_at,
         team_formation_deadline_at=settings_row.team_formation_deadline_at,
         fetched_at=now,
     )
@@ -109,6 +113,20 @@ async def ensure_deadline_open(db: AsyncSession, round: Round) -> None:
     )
     if deadline is not None and datetime.now(timezone.utc) > _as_utc(deadline):
         raise ApiError(409, f"The round {round} submission deadline has passed")
+
+
+async def ensure_round_open(db: AsyncSession, round: Round) -> None:
+    """Server-side enforcement of the admin-set opens_at gate — mirrors
+    ensure_deadline_open. Unset (None) means no gate at all, so this is a
+    no-op until an admin explicitly sets an opening time."""
+    snapshot = await _get_deadline_snapshot(db)
+    opens_at = (
+        snapshot.submission_opens_at
+        if round == 1
+        else snapshot.round2_submission_opens_at
+    )
+    if opens_at is not None and datetime.now(timezone.utc) < _as_utc(opens_at):
+        raise ApiError(403, f"Round {round} submission hasn't opened yet")
 
 
 async def ensure_team_formation_open(db: AsyncSession) -> None:
@@ -153,6 +171,7 @@ async def create_submission(
     if round == 2:
         await ensure_finalist_for_round2(db, team_id)
     validate_links(github_url, infographic_url, pitch_deck_url)
+    await ensure_round_open(db, round)
     await ensure_deadline_open(db, round)
     existing = await db.scalar(
         select(Submission).where(Submission.team_id == team_id, Submission.round == round)
@@ -185,6 +204,7 @@ async def update_submission(
     if round == 2:
         await ensure_finalist_for_round2(db, team.id)
     validate_links(github_url, infographic_url, pitch_deck_url)
+    await ensure_round_open(db, round)
     await ensure_deadline_open(db, round)
     submission = await get_submission(db, team.id, round)
     submission.github_url = github_url

@@ -225,6 +225,19 @@ class DeadlineUpdate(BaseModel):
     )
 
 
+class OpensAtUpdate(BaseModel):
+    round: Literal[1, 2] = Field(default=1, description="Which round's opening time to set")
+    submission_opens_at: datetime | None = Field(
+        default=None,
+        description=(
+            "When this round's submission form unlocks for approved teams. "
+            "Omit/null to clear it — the form is then open immediately on approval, "
+            "same as before this field existed."
+        ),
+        examples=["2026-10-24T09:00:00+08:00"],
+    )
+
+
 class TeamFormationDeadlineUpdate(BaseModel):
     team_formation_deadline_at: datetime = Field(examples=["2026-09-12T12:00:00+08:00"])
 
@@ -236,6 +249,8 @@ class EventSettingsRead(BaseModel):
     landing_countdown_label: str | None
     submission_deadline_at: datetime | None
     round2_submission_deadline_at: datetime | None
+    submission_opens_at: datetime | None
+    round2_submission_opens_at: datetime | None
     team_formation_deadline_at: datetime | None
     updated_at: datetime
 

@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models import Profile, Submission
 from app.db.session import get_db
 from app.dependencies import require_admin
-from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead
+from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead, OpensAtUpdate
 from app.schemas.common import error_responses
 from app.services import content as content_service
 from app.services.audit import log_admin_action
@@ -108,6 +108,33 @@ async def update_deadline(
     row = await content_service.set_submission_deadline(
         db, admin, body.round, body.submission_deadline_at
     )
+    return _to_event_settings_read(row)
+
+
+@router.patch(
+    "/opens-at",
+    response_model=EventSettingsRead,
+    summary="Set or clear a round's submission opening time",
+    description=(
+        "Before this moment, approved teams see a locked message instead of the "
+        "submission form — see ensure_round_open in services/submissions.py. "
+        "Omit/null submission_opens_at to clear it, making the form open "
+        "immediately on approval again."
+    ),
+    responses=error_responses(401, 403, 422),
+)
+async def update_opens_at(
+    body: OpensAtUpdate,
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EventSettingsRead:
+    row = await content_service.set_submission_opens_at(
+        db, admin, body.round, body.submission_opens_at
+    )
+    return _to_event_settings_read(row)
+
+
+def _to_event_settings_read(row) -> EventSettingsRead:
     return EventSettingsRead(
         countdown_at=row.countdown_at,
         countdown_description=row.countdown_description,
@@ -115,6 +142,8 @@ async def update_deadline(
         landing_countdown_label=row.landing_countdown_label,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
+        submission_opens_at=row.submission_opens_at,
+        round2_submission_opens_at=row.round2_submission_opens_at,
         team_formation_deadline_at=row.team_formation_deadline_at,
         updated_at=row.updated_at,
     )

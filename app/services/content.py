@@ -47,6 +47,8 @@ async def event_info(db: AsyncSession) -> EventInfoResponse:
         landing_countdown_label=settings_row.landing_countdown_label,
         submission_deadline_at=settings_row.submission_deadline_at,
         round2_submission_deadline_at=settings_row.round2_submission_deadline_at,
+        submission_opens_at=settings_row.submission_opens_at,
+        round2_submission_opens_at=settings_row.round2_submission_opens_at,
         team_formation_deadline_at=settings_row.team_formation_deadline_at,
         timeline=timeline,
         sponsors=EVENT_INFO["sponsors"],
@@ -127,6 +129,25 @@ async def set_submission_deadline(
     settings_row.updated_at = datetime.now(timezone.utc)
     log_admin_action(
         db, admin.id, f"round{round}_submission_deadline_updated", target_table="event_settings"
+    )
+    await db.commit()
+    invalidate_event_settings_cache()
+    return settings_row
+
+
+async def set_submission_opens_at(
+    db: AsyncSession, admin: Profile, round: int, opens_at: datetime | None
+):
+    """Null clears the open-gate entirely — the form becomes immediately
+    available to approved teams again, same as before this field existed."""
+    settings_row = await get_event_settings(db)
+    if round == 1:
+        settings_row.submission_opens_at = opens_at
+    else:
+        settings_row.round2_submission_opens_at = opens_at
+    settings_row.updated_at = datetime.now(timezone.utc)
+    log_admin_action(
+        db, admin.id, f"round{round}_submission_opens_at_updated", target_table="event_settings"
     )
     await db.commit()
     invalidate_event_settings_cache()

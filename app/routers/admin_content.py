@@ -110,6 +110,8 @@ def _to_event_settings_read(row) -> EventSettingsRead:
         landing_countdown_label=row.landing_countdown_label,
         submission_deadline_at=row.submission_deadline_at,
         round2_submission_deadline_at=row.round2_submission_deadline_at,
+        submission_opens_at=row.submission_opens_at,
+        round2_submission_opens_at=row.round2_submission_opens_at,
         team_formation_deadline_at=row.team_formation_deadline_at,
         updated_at=row.updated_at,
     )
