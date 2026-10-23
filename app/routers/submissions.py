@@ -50,7 +50,7 @@ async def create_submission(
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionRead:
     return await submission_service.create_submission(
-        db, team, round, user.id, body.github_url, body.infographic_url, body.pitch_deck_url
+        db, team, round, user.id, body.github_url, body.infographic_url, body.pitch_deck_url, body.domain
     )
 
 
@@ -69,5 +69,5 @@ async def update_submission(
     db: AsyncSession = Depends(get_db),
 ) -> SubmissionRead:
     return await submission_service.update_submission(
-        db, team, round, user.id, body.github_url, body.infographic_url, body.pitch_deck_url
+        db, team, round, user.id, body.github_url, body.infographic_url, body.pitch_deck_url, body.domain
     )

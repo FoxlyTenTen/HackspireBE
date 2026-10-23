@@ -165,6 +165,7 @@ async def create_submission(
     github_url: str | None,
     infographic_url: str | None,
     pitch_deck_url: str | None,
+    domain: str | None,
 ) -> Submission:
     team_id = team.id
     ensure_team_approved(team)
@@ -184,6 +185,7 @@ async def create_submission(
         github_url=github_url,
         infographic_url=infographic_url,
         pitch_deck_url=pitch_deck_url,
+        domain=domain,
         submitted_by=user_id,
     )
     db.add(submission)
@@ -199,6 +201,7 @@ async def update_submission(
     github_url: str | None,
     infographic_url: str | None,
     pitch_deck_url: str | None,
+    domain: str | None,
 ) -> Submission:
     ensure_team_approved(team)
     if round == 2:
@@ -210,6 +213,7 @@ async def update_submission(
     submission.github_url = github_url
     submission.infographic_url = infographic_url
     submission.pitch_deck_url = pitch_deck_url
+    submission.domain = domain
     submission.submitted_by = user_id
     submission.updated_at = datetime.now(timezone.utc)
     await db.commit()

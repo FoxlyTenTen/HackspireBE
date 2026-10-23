@@ -52,6 +52,7 @@ async def list_submissions(
             github_url=s.github_url,
             infographic_url=s.infographic_url,
             pitch_deck_url=s.pitch_deck_url,
+            domain=s.domain,
             submitted_at=s.submitted_at,
             updated_at=s.updated_at,
         )
@@ -68,6 +69,7 @@ async def list_submissions(
                 "github_url",
                 "infographic_url",
                 "pitch_deck_url",
+                "domain",
                 "submitted_at",
                 "updated_at",
             ]
@@ -81,6 +83,7 @@ async def list_submissions(
                     r.github_url,
                     r.infographic_url,
                     r.pitch_deck_url,
+                    r.domain,
                     r.submitted_at,
                     r.updated_at,
                 ]

@@ -131,6 +131,9 @@ class Submission(Base):
     github_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     infographic_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     pitch_deck_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # One of the 5 fixed challenge domains — see DOMAIN_OPTIONS in
+    # schemas/submission.py for the exact allowed values.
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True)
     submitted_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("profiles.id"), nullable=True
     )

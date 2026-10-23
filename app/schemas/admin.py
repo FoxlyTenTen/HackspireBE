@@ -214,6 +214,7 @@ class AdminSubmissionRow(BaseModel):
     github_url: str | None
     infographic_url: str | None
     pitch_deck_url: str | None
+    domain: str | None
     submitted_at: datetime
     updated_at: datetime
 

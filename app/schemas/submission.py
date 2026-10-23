@@ -1,7 +1,25 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# The 5 fixed challenge domains a team tags their submission with — shown
+# as a dropdown in the participant Projects page, before the Canvas link.
+DOMAIN_OPTIONS = (
+    "Predictive Infrastructure & Energy Analytics",
+    "Smart Mobility & Citizen-Centric AI",
+    "E-Commerce & Consumer Intelligence",
+    "Intelligent Transit & Urban Mobility",
+    "Global Edu-Tech & Talent Ecosystems",
+)
+Domain = Literal[
+    "Predictive Infrastructure & Energy Analytics",
+    "Smart Mobility & Citizen-Centric AI",
+    "E-Commerce & Consumer Intelligence",
+    "Intelligent Transit & Urban Mobility",
+    "Global Edu-Tech & Talent Ecosystems",
+]
 
 
 class SubmissionWrite(BaseModel):
@@ -20,6 +38,11 @@ class SubmissionWrite(BaseModel):
         description="Link to the team's pitch deck",
         examples=["https://drive.google.com/file/d/def456/view"],
     )
+    domain: Domain | None = Field(
+        default=None,
+        description="One of the 5 fixed challenge domains",
+        examples=["Smart Mobility & Citizen-Centric AI"],
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -28,6 +51,7 @@ class SubmissionWrite(BaseModel):
                     "github_url": "https://github.com/neon-nebula/lumina-project",
                     "infographic_url": "https://drive.google.com/file/d/abc123/view",
                     "pitch_deck_url": "https://drive.google.com/file/d/def456/view",
+                    "domain": "Smart Mobility & Citizen-Centric AI",
                 }
             ]
         }
@@ -51,6 +75,7 @@ class SubmissionRead(BaseModel):
     github_url: str | None
     infographic_url: str | None
     pitch_deck_url: str | None
+    domain: str | None
     submitted_by: uuid.UUID | None
     submitted_at: datetime
     updated_at: datetime
