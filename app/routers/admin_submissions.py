@@ -1,8 +1,9 @@
 import csv
 import io
-from typing import Literal
+import uuid
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from app.dependencies import require_admin
 from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead, OpensAtUpdate
 from app.schemas.common import error_responses
 from app.services import content as content_service
+from app.services import submissions as submission_service
 from app.services.audit import log_admin_action
 
 router = APIRouter(prefix="/admin/submissions", tags=["Admin — Submissions"])
@@ -94,6 +96,27 @@ async def list_submissions(
             headers={"Content-Disposition": "attachment; filename=submissions.csv"},
         )
     return rows
+
+
+@router.delete(
+    "/{team_id}/{round}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a team's submission for a round",
+    description="Removes the submission row entirely — the team sees an empty form again, as if they'd never submitted.",
+    responses=error_responses(401, 403, 404),
+)
+async def delete_submission(
+    team_id: uuid.UUID,
+    round: Annotated[int, Path(ge=1, le=2)],
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await submission_service.admin_delete_submission(db, team_id, round)
+    log_admin_action(
+        db, admin.id, "submission_deleted", target_table="submissions", target_id=team_id,
+        details=f"round={round}",
+    )
+    await db.commit()
 
 
 @router.patch(

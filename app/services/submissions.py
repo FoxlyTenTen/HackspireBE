@@ -218,3 +218,13 @@ async def update_submission(
     submission.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return submission
+
+
+async def admin_delete_submission(db: AsyncSession, team_id: uuid.UUID, round: Round) -> None:
+    """Admin-only: remove a team's submission for a round entirely, so the
+    team sees an empty form again (not just cleared links — the row itself
+    is gone, same as if they'd never submitted). Caller commits (see
+    approve_team in admin_teams.py for the same stage-then-commit pattern,
+    so this lands in the same transaction as the audit log entry)."""
+    submission = await get_submission(db, team_id, round)
+    await db.delete(submission)
