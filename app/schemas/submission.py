@@ -12,6 +12,7 @@ DOMAIN_OPTIONS = (
     "E-Commerce & Consumer Intelligence",
     "Intelligent Transit & Urban Mobility",
     "Global Edu-Tech & Talent Ecosystems",
+    "Other / Own Idea",
 )
 Domain = Literal[
     "Predictive Infrastructure & Energy Analytics",
@@ -19,6 +20,7 @@ Domain = Literal[
     "E-Commerce & Consumer Intelligence",
     "Intelligent Transit & Urban Mobility",
     "Global Edu-Tech & Talent Ecosystems",
+    "Other / Own Idea",
 ]
 
 
