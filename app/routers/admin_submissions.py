@@ -63,13 +63,13 @@ async def list_submissions(
         writer = csv.writer(buffer)
         writer.writerow(
             [
-                "round",
                 "team_reference_id",
                 "team_name",
-                "github_url",
-                "infographic_url",
-                "pitch_deck_url",
                 "domain",
+                "round",
+                "infographic_url",  # Canvas link — the mandatory one, right after round
+                "github_url",
+                "pitch_deck_url",
                 "submitted_at",
                 "updated_at",
             ]
@@ -77,13 +77,13 @@ async def list_submissions(
         for r in rows:
             writer.writerow(
                 [
-                    r.round,
                     r.team_reference_id,
                     r.team_name,
-                    r.github_url,
-                    r.infographic_url,
-                    r.pitch_deck_url,
                     r.domain,
+                    r.round,
+                    r.infographic_url,
+                    r.github_url,
+                    r.pitch_deck_url,
                     r.submitted_at,
                     r.updated_at,
                 ]
