@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Profile, Submission
+from app.db.models import Profile, Submission, TeamMember
 from app.db.session import get_db
 from app.dependencies import require_admin
 from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead, OpensAtUpdate
@@ -96,6 +96,49 @@ async def list_submissions(
             headers={"Content-Disposition": "attachment; filename=submissions.csv"},
         )
     return rows
+
+
+@router.get(
+    "/participant-emails",
+    summary="Export emails of participants on teams that submitted a project",
+    description=(
+        "CSV download with a single `email` column — one row per participant "
+        "belonging to a team that has at least one submission. Omit `round` for "
+        "either round combined; pass `round=1` or `round=2` to filter to teams "
+        "that submitted that specific round. Teams that never submitted (that "
+        "round) are excluded entirely."
+    ),
+    responses=error_responses(401, 403),
+)
+async def export_participant_emails(
+    round: int | None = Query(default=None, ge=1, le=2),
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    submitted_team_ids = select(Submission.team_id).distinct()
+    if round is not None:
+        submitted_team_ids = submitted_team_ids.where(Submission.round == round)
+    emails = (
+        await db.scalars(
+            select(Profile.email)
+            .join(TeamMember, TeamMember.participant_id == Profile.id)
+            .where(TeamMember.team_id.in_(submitted_team_ids))
+            .distinct()
+            .order_by(Profile.email)
+        )
+    ).all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["email"])
+    for email in emails:
+        writer.writerow([email])
+    filename = f"submitted_participants_emails_round{round}.csv" if round else "submitted_participants_emails.csv"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.delete(
