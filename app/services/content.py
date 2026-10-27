@@ -342,7 +342,7 @@ async def put_finalists(
             db,
             recipient_ids,
             "round2_open",
-            "Your team has been selected to advance — Round 2 submission is now open!",
+            "🎉 Great news — your team has been selected to advance to Round 2! Head to the Project Hub to get started.",
         )
         # Also post a public announcement so non-selected participants see the
         # list was published too — staged on the same session/commit as the
