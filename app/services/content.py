@@ -14,7 +14,6 @@ from app.db.models import (
     Material,
     Profile,
     Team,
-    TeamMember,
     TimelineItem,
     Winner,
 )
@@ -316,9 +315,6 @@ async def put_finalists(
     db: AsyncSession, admin: Profile, data: FinalistsPut
 ) -> list[FinalistRead]:
     await _ensure_teams_exist(db, data.team_ids)
-    was_published = bool(
-        await db.scalar(select(Finalist.id).where(Finalist.published.is_(True)).limit(1))
-    )
     await db.execute(sa_delete(Finalist))
     published_at = datetime.now(timezone.utc) if data.published else None
     db.add_all(
@@ -332,28 +328,11 @@ async def put_finalists(
         target_table="finalists",
         details=f"{len(data.team_ids)} team(s)",
     )
-    if data.published and not was_published:
-        recipient_ids = (
-            await db.scalars(
-                select(TeamMember.participant_id).where(TeamMember.team_id.in_(data.team_ids))
-            )
-        ).all()
-        create_notifications(
-            db,
-            recipient_ids,
-            "round2_open",
-            "🎉 Great news — your team has been selected to advance to Round 2! Head to the Project Hub to get started.",
-        )
-        # Also post a public announcement so non-selected participants see the
-        # list was published too — staged on the same session/commit as the
-        # finalist replace above, so it's atomic with it.
-        await _stage_announcement(
-            db,
-            admin,
-            "📢 Round 2 Announcement",
-            "⌛ Round 2 submission is now open. Check the Project Hub now — you can submit early and update your links anytime before the deadline.",
-            image_url=None,
-        )
+    # Deliberately silent: publishing the Round 2 shortlist just unlocks the
+    # Project Hub for those teams (gated by round2_submission_opens_at via
+    # ensure_round_open, same countdown participants already see) — it does
+    # not push a notification or announcement. The timing, not the publish
+    # action, is what should surface Round 2 to participants.
     await db.commit()
     return await list_finalists(db, published_only=False)
 
