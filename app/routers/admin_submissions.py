@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Profile, Submission, TeamMember
+from app.db.models import Profile, Submission, Team, TeamMember
 from app.db.session import get_db
 from app.dependencies import require_admin
 from app.schemas.admin import AdminSubmissionRow, DeadlineUpdate, EventSettingsRead, OpensAtUpdate
@@ -138,6 +138,44 @@ async def export_participant_emails(
         content=buffer.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get(
+    "/teams-with-members",
+    summary="Export submitted teams with every member's name and email",
+    description=(
+        "CSV download with columns team_reference_id, team_name, member_name, "
+        "email, university_name — one row per member of a team that has at "
+        "least one submission (either round). Teams that never submitted are "
+        "excluded entirely."
+    ),
+    responses=error_responses(401, 403),
+)
+async def export_teams_with_members(
+    admin: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    submitted_team_ids = select(Submission.team_id).distinct()
+    rows = (
+        await db.execute(
+            select(Team.reference_id, Team.name, Profile.name, Profile.email, Profile.university_name)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .join(Profile, Profile.id == TeamMember.participant_id)
+            .where(Team.id.in_(submitted_team_ids))
+            .order_by(Team.reference_id, Profile.name)
+        )
+    ).all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["team_reference_id", "team_name", "member_name", "email", "university_name"])
+    for team_reference_id, team_name, member_name, email, university_name in rows:
+        writer.writerow([team_reference_id, team_name, member_name, email, university_name])
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=submitted_teams_with_members.csv"},
     )
 
 

@@ -342,16 +342,16 @@ async def put_finalists(
             db,
             recipient_ids,
             "round2_open",
-            "Your team has been selected as a finalist — round 2 submission is now open!",
+            "Your team has been selected to advance — Round 2 submission is now open!",
         )
-        # Also post a public announcement so non-finalist participants see the
+        # Also post a public announcement so non-selected participants see the
         # list was published too — staged on the same session/commit as the
         # finalist replace above, so it's atomic with it.
         await _stage_announcement(
             db,
             admin,
-            "Finalists Announced",
-            "The Finalist teams have been updated — check the Nottification page to see whether your team are selected or not.",
+            "📢 Round 2 Announcement",
+            "⌛ Round 2 submission is now open. Check the Project Hub now — you can submit early and update your links anytime before the deadline.",
             image_url=None,
         )
     await db.commit()
